@@ -1,0 +1,18 @@
+[
+    {
+      "brand": "Adidas",
+      "media_type": "Meta Ads",
+      "summary": "Adidas captured the vast majority of measured reach (≈85.8% of all ads in the file; 17,599,158 total reach vs. PUMA’s 2,906,337 and Nike’s missing reach), so in this dataset it clearly outperforms the other two brands. The creative line is highly promotion-heavy and localised (Turkish) around outlet/selected items, “seçili ürünlerde” discounts, and extra basket reductions (e.g. +15%), indicating a conversion-focused, price-led push. This makes Adidas the price/promo anchor in the comparison set."
+    },
+    {
+      "brand": "PUMA",
+      "media_type": "Meta Ads",
+      "summary": "PUMA accounts for the remaining measured reach (≈14.2%, 2,906,337 total), well behind Adidas in this period, so it shows secondary visibility in the set. Unlike Adidas’ discount saturation, PUMA’s copy emphasises “hottest drops,” latest gear, free shipping from 50 €, 60-day returns, plus product- and collab-led items (e.g. LaMelo footwear), i.e. more brand/product value than pure price. Position PUMA as the freshness/merchandise storyteller rather than the promotion driver."
+    },
+    {
+      "brand": "Nike",
+      "media_type": "Meta Ads",
+      "summary": "Nike ads in the file are clearly running a time-bound sale narrative (03–11 Nov, up to 60% off, extra 15% with code LEVELUP, multi-language variants), so thematically it sits between Adidas’ discounting and PUMA’s product angle. However, the field `ad_details/aaa_info/eu_total_reach` is missing/zero for Nike in this extract, so we cannot rank its delivery vs. Adidas and PUMA. Flag this gap: to benchmark Nike properly on the dashboard, ensure Meta is populating EU reach for Nike ads in the same way as for Adidas/PUMA."
+    }
+  ]
+  

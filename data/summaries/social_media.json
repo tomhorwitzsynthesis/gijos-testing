@@ -1,0 +1,18 @@
+[
+    {
+      "brand": "Adidas",
+      "media_type": "LinkedIn",
+      "summary": "Adidas published most frequently in the period (53 posts), so it dominates share of voice by volume, but not by per-post engagement (total interactions ≈72.7K vs. Nike’s ≈60.9K on far fewer posts). Content is strongly corporate-sport hybrid: recurring #inside3stripes storytelling, football/motorsport activations, intern/talent pieces, and business updates (e.g. Q3). On the dashboard, position Adidas as the consistency layer — high output, good but not market-leading engagement efficiency. Note the gap: there is no post-level reach/impression metric, so comparisons are engagement-only."
+    },
+    {
+      "brand": "Nike",
+      "media_type": "LinkedIn",
+      "summary": "Nike is the engagement-efficiency leader: ≈60.9K total interactions from only 30 posts, i.e. the highest interaction per post in the set (≈2.0K). Posts skew to brand culture and leadership (SwooshLife, HQ/PHK campus, inclusion/accessibility, coaching, innovation and internships), which typically over-index on comments. On the dashboard, show Nike as #1 on quality/impact per post, even though Adidas posted more. Same data limitation applies: without impressions we cannot calculate true ER or reach-normalised performance."
+    },
+    {
+      "brand": "PUMA",
+      "media_type": "LinkedIn",
+      "summary": "PUMA sits in the middle on activity (48 posts) but trails on total interactions (≈37.3K) and especially on per-post engagement (≈0.78K). The feed is coherent — financial updates, #PUMAFam/employer-brand stories, football/jersey content, HYROX/2030 performance themes — but it did not convert into the same interaction density as Nike’s culture-led posts. On the dashboard, label PUMA as ‘relevant but lower-engaging’ and point out that, in this dataset, frequency alone isn’t closing the engagement gap."
+    }
+  ]
+  

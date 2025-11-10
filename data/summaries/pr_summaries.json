@@ -1,0 +1,18 @@
+[
+    {
+      "brand": "Nike",
+      "media_type": "PR",
+      "summary": "Nike is the clear PR leader in this period with 128 articles and ≈37.44B impressions, substantially ahead of Adidas (65 / ≈17.29B) and PUMA (25 / ≈6.31B). Coverage is broad and mostly product- and collaboration-led, with strong weight on “Product Releases and Innovations”, “Nike Collaborations”, and corporate/market narratives, which explains the high impression total. On the dashboard, rank Nike #1 on both article volume and reach and tag the period as driven by new product/collab and corporate performance stories."
+    },
+    {
+      "brand": "Adidas",
+      "media_type": "PR",
+      "summary": "Adidas occupies the middle position with 65 articles and ≈17.29B impressions — materially below Nike but well ahead of PUMA. The dominant themes are “Sneaker Design and Innovation”, “Adidas Collaborations”, and “Sales Performance and Market Strategies”, plus some culturally sensitive coverage (“Cultural Appropriation and Representation”). Present Adidas as steady, innovation/collab oriented PR that did not match Nike’s distribution scale in this window."
+    },
+    {
+      "brand": "PUMA",
+      "media_type": "PR",
+      "summary": "PUMA is the smallest PR contributor in the set with 25 articles and ≈6.31B impressions. The stories it did place are consistent — “Product Launches and Aesthetics”, “Puma Collaborations”, and performance/fashion angles — but total output and reach are too low to compete with Nike’s wave or Adidas’ steady stream. Mark PUMA as underrepresented for the period and flag that gains will require either more stories or higher-impact placements."
+    }
+  ]
+  

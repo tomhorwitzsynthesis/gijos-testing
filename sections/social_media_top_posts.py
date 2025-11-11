@@ -17,13 +17,6 @@ def render(selected_platforms=None):
 
     st.subheader("🏆 Top Social Media Posts")
 
-    st.markdown("""
-### 📌 Key Takeaways
-
-**LinkedIn = leadership, culture, and credibility**  
-Posts that spotlight team wins, brand milestones, and meaningful partnerships draw the strongest engagement. Use this section to surface the narratives that best reinforce each brand’s positioning.
-""")
-
     start_date, end_date = get_selected_date_range()
 
     for platform in selected_platforms:
@@ -91,10 +84,3 @@ Posts that spotlight team wins, brand milestones, and meaningful partnerships dr
                     st.markdown(f"**Top posts for {brand_display}**")
                     st.markdown(brand_df.head(5).to_markdown(index=False), unsafe_allow_html=True)
 
-        st.markdown("""
-### 📊 LinkedIn Content Summary
-
-- Culture-first storytelling (team wins, recognition, behind-the-scenes moments) keeps followers invested.
-- Product or partnership announcements perform best when anchored in people and purpose.
-- Thought-leadership pays off when it ties back to the brand’s broader mission or momentum.
-""")

@@ -11,9 +11,9 @@ PLATFORMS = ["linkedin"]
 NAME_MAP = BRAND_NAME_MAPPING.copy()
 
 # --- color helpers ---
-_ALL_BRANDS = "All Brands"  # not used here, but reserved if you add a combined series later
 _FALLBACK = "#BDBDBD"
 _CATEGORY_ORDER = list(BRAND_COLORS.keys())
+
 
 def _normalized(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
@@ -21,13 +21,30 @@ def _normalized(df: pd.DataFrame) -> pd.DataFrame:
         out["Company"] = out["Company"].replace(NAME_MAP)
     return out
 
+
 def _present_color_map(present_labels) -> dict:
     m = dict(BRAND_COLORS)
     for b in present_labels:
         if b not in m:
             m[b] = _FALLBACK
     return m
-# -----------------------------------------------------------------------
+
+
+def _week_start(ts: pd.Timestamp) -> pd.Timestamp:
+    return (ts - pd.to_timedelta(ts.weekday(), unit="D")).normalize()
+
+
+def _format_week_axis(fig, series: pd.Series):
+    ticks = sorted(pd.to_datetime(series.dropna().unique()))
+    fig.update_layout(
+        xaxis_title="Week Starting",
+        xaxis=dict(
+            tickmode="array",
+            tickvals=ticks,
+            ticktext=[pd.to_datetime(t).strftime("%d %b %Y") for t in ticks],
+        ),
+    )
+
 
 def render(selected_platforms=None):
     st.subheader("📈 Social Media Volume & Engagement Trends")
@@ -49,22 +66,15 @@ def render(selected_platforms=None):
         st.info("Invalid date range selected.")
         return
 
-    months = pd.period_range(start=start_ts, end=end_ts - pd.Timedelta(days=1), freq="M")
-    if months.empty:
-        st.info("No months available in the selected range.")
-        return
-
-    month_labels = [m.strftime('%b %Y') for m in months]
-
     for platform in selected_platforms:
         st.markdown(f"### {platform.capitalize()}")
 
-        combined_data = {
-            "Month": [],
+        weekly_rows = {
+            "Week": [],
             "Company": [],
             "Volume": [],
             "Engagement": [],
-            "Engagement_Per_Follower": []
+            "Engagement_Per_Follower": [],
         }
 
         any_data_for_platform = False
@@ -74,94 +84,91 @@ def render(selected_platforms=None):
             if df is None or df.empty or "Published Date" not in df.columns:
                 continue
 
-            df = df.dropna(subset=["Published Date"])
+            df = df.copy()
             df["Published Date"] = pd.to_datetime(df["Published Date"], errors="coerce")
             df = df.dropna(subset=["Published Date"])
             if df.empty:
                 continue
 
-            # filter to the selected window
             df = df[(df["Published Date"] >= start_ts) & (df["Published Date"] < end_ts)]
             if df.empty:
                 continue
 
-            df["Month"] = df["Published Date"].dt.to_period("M")
+            df["Week"] = df["Published Date"].apply(_week_start)
             any_data_for_platform = True
 
-            for period in months:
-                month_df = df[df["Month"] == period]
-                if month_df.empty:
-                    continue
+            weekly_groups = df.groupby("Week")
 
-                volume = len(month_df)
+            for week_start, week_df in weekly_groups:
+                volume = len(week_df)
+                likes = week_df.get("num_likes", pd.Series(dtype="float")).fillna(0).sum()
+                comments = week_df.get("num_comments", pd.Series(dtype="float")).fillna(0).sum()
+                shares = week_df.get("num_shares", pd.Series(dtype="float")).fillna(0).sum()
+                engagement = likes + comments * 3 + shares
 
-                engagement = (
-                    month_df.get("num_likes", pd.Series(0)).sum()
-                    + month_df.get("num_comments", pd.Series(0)).sum() * 3
-                )
-                followers = month_df.get("user_followers", pd.Series()).dropna()
-
+                followers = week_df.get("user_followers", pd.Series(dtype="float")).dropna()
                 follower_count = followers.iloc[-1] if not followers.empty else 0
-                epf = engagement / follower_count if follower_count > 0 else 0
+                engagement_per_follower = engagement / follower_count if follower_count else 0
 
-                combined_data["Month"].append(period.strftime('%b %Y'))
-                combined_data["Company"].append(brand_display)  # short name for UI
-                combined_data["Volume"].append(volume)
-                combined_data["Engagement"].append(engagement)
-                combined_data["Engagement_Per_Follower"].append(epf)
+                weekly_rows["Week"].append(week_start)
+                weekly_rows["Company"].append(brand_display)
+                weekly_rows["Volume"].append(volume)
+                weekly_rows["Engagement"].append(engagement)
+                weekly_rows["Engagement_Per_Follower"].append(engagement_per_follower)
 
-        if not any_data_for_platform or not combined_data["Month"]:
+        if not any_data_for_platform or not weekly_rows["Week"]:
             st.info(f"No {platform.capitalize()} data found within the selected date range.")
             continue
 
-        df_combined = pd.DataFrame(combined_data)
+        df_combined = pd.DataFrame(weekly_rows)
+        df_combined["Week"] = pd.to_datetime(df_combined["Week"])
 
         tab1, tab2, tab3 = st.tabs(["📊 Volume", "🔥 Engagement", "📈 Engagement Per Follower"])
 
-        # Volume
         with tab1:
-            df_plot = _normalized(df_combined)  # normalize Company -> BRAND_COLORS keys
+            df_plot = _normalized(df_combined)
             fig_volume = px.line(
                 df_plot,
-                x="Month",
+                x="Week",
                 y="Volume",
                 color="Company",
                 markers=True,
-                title=f"{platform.capitalize()} - Monthly Post Volume",
+                title=f"{platform.capitalize()} - Weekly Post Volume",
                 color_discrete_map=_present_color_map(df_plot["Company"].unique()),
                 category_orders={"Company": _CATEGORY_ORDER},
             )
-            fig_volume.update_layout(xaxis=dict(categoryorder="array", categoryarray=month_labels))
+            _format_week_axis(fig_volume, df_plot["Week"])
+            fig_volume.update_layout(yaxis_title="Number of Posts")
             st.plotly_chart(fig_volume, use_container_width=True)
 
-        # Engagement
         with tab2:
             df_plot = _normalized(df_combined)
             fig_engagement = px.line(
                 df_plot,
-                x="Month",
+                x="Week",
                 y="Engagement",
                 color="Company",
                 markers=True,
-                title=f"{platform.capitalize()} - Monthly Engagement Trend",
+                title=f"{platform.capitalize()} - Weekly Engagement Trend",
                 color_discrete_map=_present_color_map(df_plot["Company"].unique()),
                 category_orders={"Company": _CATEGORY_ORDER},
             )
-            fig_engagement.update_layout(xaxis=dict(categoryorder="array", categoryarray=month_labels))
+            _format_week_axis(fig_engagement, df_plot["Week"])
+            fig_engagement.update_layout(yaxis_title="Total Interactions")
             st.plotly_chart(fig_engagement, use_container_width=True)
 
-        # Engagement per Follower
         with tab3:
             df_plot = _normalized(df_combined)
             fig_epf = px.line(
                 df_plot,
-                x="Month",
+                x="Week",
                 y="Engagement_Per_Follower",
                 color="Company",
                 markers=True,
-                title=f"{platform.capitalize()} - Engagement per Follower",
+                title=f"{platform.capitalize()} - Weekly Engagement per Follower",
                 color_discrete_map=_present_color_map(df_plot["Company"].unique()),
                 category_orders={"Company": _CATEGORY_ORDER},
             )
-            fig_epf.update_layout(xaxis=dict(categoryorder="array", categoryarray=month_labels))
+            _format_week_axis(fig_epf, df_plot["Week"])
+            fig_epf.update_layout(yaxis_title="Engagement / Follower")
             st.plotly_chart(fig_epf, use_container_width=True)

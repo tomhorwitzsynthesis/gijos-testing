@@ -223,11 +223,12 @@ def _render_summary_tabs(summary_records):
     st.markdown("### Executive Summary")
     tabs = st.tabs(tab_labels)
     card_style = (
-        "border:1px solid #ddd; border-radius:10px; padding:15px; "
-        "margin-top:10px; margin-bottom:10px; background-color:#fafafa;"
+        "border:1px solid #2FB375; border-left:6px solid #2FB375;"
+        "border-radius:10px; padding:15px; margin-top:10px; margin-bottom:10px;"
+        "background-color:#F5FFF9; box-shadow:0 2px 4px rgba(0,0,0,0.08);"
     )
-    text_style = "margin:0; color:#333; line-height:1.5;"
-    meta_style = "margin:0 0 10px 0; color:#666; font-size:0.9em;"
+    text_style = "margin:0; color:#1F2933; line-height:1.6;"
+    meta_style = "margin:0 0 8px 0; color:#2FB375; font-size:0.85em; font-weight:600; text-transform:uppercase;"
     for idx, brand in enumerate(tab_labels):
         with tabs[idx]:
             summary_text = str(brand_to_summary.get(brand, "")).strip()

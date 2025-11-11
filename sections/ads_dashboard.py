@@ -8,9 +8,10 @@ from dateutil.relativedelta import relativedelta
 from utils.date_utils import get_selected_date_range
 from utils.file_io import load_ads_data, load_creativity_rankings, load_brand_summaries
 import ast
-# NEW imports
 import os
 import glob
+import re
+import unicodedata
 from utils.file_io import load_agility_data
 from utils.config import BRANDS, DATA_ROOT, BRAND_COLORS
 
@@ -19,6 +20,53 @@ DEFAULT_COLOR = "#BDBDBD"  # used for any brand not in BRAND_COLORS
 
 ADS_COMPOS_DIR = os.path.join(DATA_ROOT, "ads", "compos")
 COMPOS_SUMMARY_PATH = os.path.join(DATA_ROOT, "ads", "compos", "compos_summary.xlsx")
+
+ARCHETYPE_DISPLAY_ORDER = [
+    "The Technologist",
+    "The Optimiser",
+    "The Globe-trotter",
+    "The Accelerator",
+    "The Value Seeker",
+    "The Expert",
+    "The Guardian",
+    "The Futurist",
+    "The Simplifier",
+    "The Personaliser",
+    "The Principled",
+    "The Collaborator",
+    "The Mentor",
+    "The Nurturer",
+    "The People's Champion",
+    "The Eco Warrior",
+]
+
+_ARCHETYPE_CANONICAL_MAP = {
+    "technologist": "The Technologist",
+    "optimizer": "The Optimiser",
+    "optimiser": "The Optimiser",
+    "jet setter": "The Globe-trotter",
+    "jetsetter": "The Globe-trotter",
+    "globe trotter": "The Globe-trotter",
+    "accelerator": "The Accelerator",
+    "value seeker": "The Value Seeker",
+    "valueseeker": "The Value Seeker",
+    "value s": "The Value Seeker",
+    "expert": "The Expert",
+    "guardian": "The Guardian",
+    "futurist": "The Futurist",
+    "simplifier": "The Simplifier",
+    "personalizer": "The Personaliser",
+    "personaliser": "The Personaliser",
+    "principled": "The Principled",
+    "collaborator": "The Collaborator",
+    "mentor": "The Mentor",
+    "nurturer": "The Nurturer",
+    "peoples champion": "The People's Champion",
+    "people champion": "The People's Champion",
+    "people s champion": "The People's Champion",
+    "eco warrior": "The Eco Warrior",
+    "ecowarrior": "The Eco Warrior",
+}
 
 
 def _render_summary_tabs(summary_records):
@@ -41,11 +89,12 @@ def _render_summary_tabs(summary_records):
     st.markdown("### Executive Summary")
     tabs = st.tabs(tab_labels)
     card_style = (
-        "border:1px solid #ddd; border-radius:10px; padding:15px; "
-        "margin-top:10px; margin-bottom:10px; background-color:#fafafa;"
+        "border:1px solid #2FB375; border-left:6px solid #2FB375;"
+        "border-radius:10px; padding:15px; margin-top:10px; margin-bottom:10px;"
+        "background-color:#F5FFF9; box-shadow:0 2px 4px rgba(0,0,0,0.08);"
     )
-    text_style = "margin:0; color:#333; line-height:1.5;"
-    meta_style = "margin:0 0 10px 0; color:#666; font-size:0.9em;"
+    text_style = "margin:0; color:#1F2933; line-height:1.6;"
+    meta_style = "margin:0 0 8px 0; color:#2FB375; font-size:0.85em; font-weight:600; text-transform:uppercase;"
     for idx, brand in enumerate(tab_labels):
         with tabs[idx]:
             summary_text = str(brand_to_summary.get(brand, "")).strip()
@@ -311,6 +360,45 @@ def _present_color_map(present_brands):
     return m
 
 
+def _canonicalize_archetype(name: str) -> str | None:
+    if not isinstance(name, str):
+        return None
+    text = unicodedata.normalize("NFKD", name)
+    text = text.replace("�", "'").replace("’", "'")
+    text = text.lower().strip()
+    if text.startswith("the "):
+        text = text[4:]
+    text = text.replace("-", " ")
+    text = text.replace("'", " ")
+    text = re.sub(r"[^a-z ]+", " ", text)
+    text = " ".join(text.split())
+    if not text:
+        return None
+    mapped = _ARCHETYPE_CANONICAL_MAP.get(text)
+    if mapped:
+        return mapped
+    display = " ".join(word.capitalize() for word in text.split())
+    return f"The {display}" if display else None
+
+
+def _green_gradient(pct: float) -> tuple[str, str]:
+    """Return background and text colors based on percentage intensity."""
+    try:
+        value = float(pct)
+    except (TypeError, ValueError):
+        value = 0.0
+    value = max(0.0, min(100.0, value))
+    base_rgb = (245, 255, 249)  # light mint
+    peak_rgb = (31, 179, 117)   # strong green
+    ratio = value / 100.0
+    r = round(base_rgb[0] + (peak_rgb[0] - base_rgb[0]) * ratio)
+    g = round(base_rgb[1] + (peak_rgb[1] - base_rgb[1]) * ratio)
+    b = round(base_rgb[2] + (peak_rgb[2] - base_rgb[2]) * ratio)
+    bg_hex = f"#{r:02X}{g:02X}{b:02X}"
+    text_color = "#1F2933" if value < 60 else "#FFFFFF"
+    return bg_hex, text_color
+
+
 def render():
 
     df = load_ads_data()
@@ -415,6 +503,18 @@ def render():
     reach_6m = df_fixed.groupby('brand')['reach'].sum() if not df_fixed.empty else pd.Series(dtype=float)
     reach_mean = reach_6m.mean() if len(reach_6m) else 0
     reach_ranks = reach_6m.rank(ascending=False, method="min") if len(reach_6m) else pd.Series(dtype=float)
+    reach_6m_map = reach_6m.to_dict()
+    reach_norm_map = {
+        _normalize_brand(brand): value
+        for brand, value in reach_6m_map.items()
+        if _normalize_brand(brand)
+    }
+    reach_rank_map = reach_ranks.to_dict()
+    reach_rank_norm_map = {
+        _normalize_brand(brand): rank
+        for brand, rank in reach_rank_map.items()
+        if _normalize_brand(brand)
+    }
 
     # Brand strength from compos files in data/ads/compos, fallback to Agility
     strength_map = _load_brand_strength_from_summary()
@@ -445,15 +545,15 @@ def render():
 
     # Normalize for matching, but display original preferred names: prefer ads brand if available, else compos/creativity name
     norm_to_display = {}
+    ads_norm_map = { _normalize_brand(b): b for b in ads_brands }
     for b in compos_brands.union(ads_brands).union(creativity_brands):
         norm = _normalize_brand(b)
-        # priority: ads -> compos -> creativity
-        if norm not in norm_to_display:
-            # choose best display
-            if b in ads_brands:
-                norm_to_display[norm] = b
-            else:
-                norm_to_display[norm] = b
+        if not norm:
+            continue
+        if norm in norm_to_display:
+            continue
+        preferred = ads_norm_map.get(norm, b)
+        norm_to_display[norm] = preferred
 
     available_brands = sorted(list(norm_to_display.values()))
 
@@ -467,11 +567,18 @@ def render():
 
                 # Reach 6 months
                 with col1:
-                    total_reach = int(reach_6m.get(brand_name, 0)) if len(reach_6m) else 0
+                    norm_brand = _normalize_brand(brand_name)
+                    total_reach = 0
+                    if len(reach_6m):
+                        total_reach = int(
+                            reach_6m_map.get(brand_name, reach_norm_map.get(norm_brand, 0))
+                        )
                     delta_mean_pct = ((total_reach - (reach_mean if reach_mean != 0 else 1)) / (reach_mean if reach_mean != 0 else 1)) * 100 if reach_mean != 0 else 0
-                    rank_now = reach_ranks.get(brand_name, None) if len(reach_ranks) else None
+                    rank_now = None
+                    if len(reach_ranks):
+                        rank_now = reach_rank_map.get(brand_name, reach_rank_norm_map.get(norm_brand))
                     _format_simple_metric_card(
-                        label="Reach (6 months)",
+                        label="Reach",
                         val=f"{total_reach:,}",
                         pct=delta_mean_pct,
                         rank_now=rank_now,
@@ -532,47 +639,61 @@ def render():
 
     # --- Top Archetypes by Company ---
     st.markdown("### Top Archetypes by Company")
-    archetypes_data = _load_top_archetypes_from_summary()
-    if not archetypes_data:
-        archetypes_data = _load_top_archetypes_from_agility()
-    if archetypes_data:
-        # Compute overall top archetypes
-        overall_counts = {}
-        overall_total = 0
-        for archetypes in archetypes_data.values():
-            for item in archetypes:
-                archetype = item['archetype']
-                count = item['count']
-                overall_counts[archetype] = overall_counts.get(archetype, 0) + count
-                overall_total += count
-        overall_top3 = sorted(overall_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-        overall_items = []
-        for archetype, count in overall_top3:
-            pct = (count / overall_total) * 100 if overall_total > 0 else 0
-            overall_items.append({'archetype': archetype, 'percentage': pct, 'count': count})
+    archetype_stats = _load_archetype_stats_from_summary()
+    if not archetype_stats:
+        archetype_stats = _load_archetype_stats_from_agility()
 
-        tab_labels = ["🌍 Overall"] + list(archetypes_data.keys())
-        company_tabs = st.tabs(tab_labels)
-        # Overall tab
-        with company_tabs[0]:
-            st.subheader("Overall - Top 3 Archetypes")
-            col1, col2, col3 = st.columns(3)
-            for j, archetype_info in enumerate(overall_items):
-                col = col1 if j == 0 else col2 if j == 1 else col3
-                with col:
-                    st.markdown(f"""
-                    <div style="border:1px solid #ddd; border-radius:10px; padding:10px; margin-bottom:10px; text-align:center;">
-                        <h4 style="margin:0; color:#333;">{archetype_info['archetype']}</h4>
-                        <h2 style="margin:5px 0; color:#333; font-size:2.0em;">{archetype_info['percentage']:.1f}%</h2>
-                        <p style="margin:0; color:#666; font-size:0.9em;">{archetype_info['count']} items</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-        # Company tabs
-        for i, (company, archetypes) in enumerate(archetypes_data.items()):
-            with company_tabs[i + 1]:
-                st.subheader(f"{company} - Top 3 Archetypes")
+    overall_counts = {}
+    overall_total = 0
+    if archetype_stats:
+        for info in archetype_stats.values():
+            counts = info.get("counts", {})
+            for archetype, count in counts.items():
+                count_int = int(count)
+                overall_counts[archetype] = overall_counts.get(archetype, 0) + count_int
+                overall_total += count_int
+
+    archetypes_data = {}
+    if archetype_stats:
+        for company, info in archetype_stats.items():
+            counts = info.get("counts", {})
+            total = info.get("total", 0)
+            if not counts or total <= 0:
+                continue
+            sorted_items = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+            top_items = []
+            for archetype, count in sorted_items[:3]:
+                pct = (count / total) * 100 if total else 0
+                top_items.append({
+                    "archetype": archetype,
+                    "percentage": pct,
+                    "count": int(count),
+                })
+            if top_items:
+                archetypes_data[company] = top_items
+
+    if not archetype_stats:
+        st.info("No archetype data available. Ensure compos files are in data/ads/compos or Agility files contain 'Top Archetype'.")
+    else:
+        if archetypes_data:
+            overall_items = []
+            if overall_counts:
+                overall_top3 = sorted(overall_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+                for archetype, count in overall_top3:
+                    pct = (count / overall_total) * 100 if overall_total else 0
+                    overall_items.append({
+                        "archetype": archetype,
+                        "percentage": pct,
+                        "count": int(count),
+                    })
+
+            tab_labels = ["🌍 Overall"] + list(archetypes_data.keys())
+            company_tabs = st.tabs(tab_labels)
+            # Overall tab
+            with company_tabs[0]:
+                st.subheader("Overall - Top 3 Archetypes")
                 col1, col2, col3 = st.columns(3)
-                for j, archetype_info in enumerate(archetypes):
+                for j, archetype_info in enumerate(overall_items):
                     col = col1 if j == 0 else col2 if j == 1 else col3
                     with col:
                         st.markdown(f"""
@@ -582,8 +703,64 @@ def render():
                             <p style="margin:0; color:#666; font-size:0.9em;">{archetype_info['count']} items</p>
                         </div>
                         """, unsafe_allow_html=True)
-    else:
-        st.info("No archetype data available. Ensure compos files are in data/ads/compos or Agility files contain 'Top Archetype'.")
+            # Company tabs
+            for i, (company, archetypes) in enumerate(archetypes_data.items()):
+                with company_tabs[i + 1]:
+                    st.subheader(f"{company} - Top 3 Archetypes")
+                    col1, col2, col3 = st.columns(3)
+                    for j, archetype_info in enumerate(archetypes):
+                        col = col1 if j == 0 else col2 if j == 1 else col3
+                        with col:
+                            st.markdown(f"""
+                            <div style="border:1px solid #ddd; border-radius:10px; padding:10px; margin-bottom:10px; text-align:center;">
+                                <h4 style="margin:0; color:#333;">{archetype_info['archetype']}</h4>
+                                <h2 style="margin:5px 0; color:#333; font-size:2.0em;">{archetype_info['percentage']:.1f}%</h2>
+                                <p style="margin:0; color:#666; font-size:0.9em;">{archetype_info['count']} items</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+        else:
+            st.info("No archetype data available. Ensure compos files are in data/ads/compos or Agility files contain 'Top Archetype'.")
+
+        # --- Archetype Matrix View ---
+        st.markdown("### Archetype Coverage Matrix")
+        def _render_archetype_matrix(counts_dict, total_count):
+            counts_dict = counts_dict or {}
+            total = total_count if total_count and total_count > 0 else 0
+            card_base_style = (
+                "border:1px solid #CDE7D8; border-radius:10px; padding:12px; "
+                "margin-bottom:12px; text-align:center;"
+            )
+            for row_start in range(0, len(ARCHETYPE_DISPLAY_ORDER), 4):
+                cols = st.columns(4)
+                for idx, archetype in enumerate(ARCHETYPE_DISPLAY_ORDER[row_start:row_start + 4]):
+                    pct_value = 0.0
+                    count_value = int(counts_dict.get(archetype, 0))
+                    if total > 0:
+                        pct_value = (count_value / total) * 100
+                    bg_hex, text_color = _green_gradient(pct_value)
+                    with cols[idx]:
+                        st.markdown(
+                            f"""
+                            <div style="{card_base_style} background-color:{bg_hex}; color:{text_color};">
+                                <h5 style="margin:0;">{archetype}</h5>
+                                <p style="margin:6px 0 0; font-size:1.1em; font-weight:600;">{pct_value:.1f}%</p>
+                                <p style="margin:0; font-size:0.85em; color:{text_color}; opacity:0.85;">{count_value} ads</p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+        matrix_labels = ["🌍 Overall"] + list(archetype_stats.keys())
+        matrix_tabs = st.tabs(matrix_labels)
+
+        with matrix_tabs[0]:
+            st.subheader("Overall Archetype Distribution")
+            _render_archetype_matrix(overall_counts, overall_total)
+
+        for idx, (company, info) in enumerate(archetype_stats.items()):
+            with matrix_tabs[idx + 1]:
+                st.subheader(f"{company} Archetype Distribution")
+                _render_archetype_matrix(info.get("counts", {}), info.get("total", 0))
 
 
     st.markdown(
@@ -645,22 +822,52 @@ def render():
 
     # Text analysis and new campaigns sections can be added later as optional blocks
 
-def _load_top_archetypes_from_summary():
+def _load_archetype_stats_from_summary():
     if not os.path.exists(COMPOS_SUMMARY_PATH):
         return {}
     df = pd.read_excel(COMPOS_SUMMARY_PATH)
-    archetypes = {}
+    stats = {}
     for col in df.columns:
-        vc = df[col].dropna().value_counts()
-        total = int(vc.sum()) if vc.sum() else 0
-        top3 = vc.head(3)
-        items = []
-        for archetype, count in top3.items():
-            pct = (count / total) * 100 if total > 0 else 0
-            items.append({'archetype': archetype, 'percentage': pct, 'count': int(count)})
-        if items:
-            archetypes[col] = items
-    return archetypes
+        values = df[col].dropna()
+        counts = values.value_counts()
+        canonical_counts = {}
+        for archetype, count in counts.items():
+            canonical = _canonicalize_archetype(archetype)
+            if not canonical:
+                continue
+            canonical_counts[canonical] = canonical_counts.get(canonical, 0) + int(count)
+        total = int(sum(canonical_counts.values()))
+        if total == 0:
+            continue
+        stats[col] = {
+            "total": total,
+            "counts": canonical_counts,
+        }
+    return stats
+
+
+def _load_archetype_stats_from_agility():
+    stats = {}
+    for brand in BRANDS:
+        df_ag = load_agility_data(brand)
+        if df_ag is None or df_ag.empty or 'Top Archetype' not in df_ag.columns:
+            continue
+        values = df_ag['Top Archetype'].dropna()
+        counts = values.value_counts()
+        canonical_counts = {}
+        for archetype, count in counts.items():
+            canonical = _canonicalize_archetype(archetype)
+            if not canonical:
+                continue
+            canonical_counts[canonical] = canonical_counts.get(canonical, 0) + int(count)
+        total = int(sum(canonical_counts.values()))
+        if total == 0:
+            continue
+        stats[brand] = {
+            "total": total,
+            "counts": canonical_counts,
+        }
+    return stats
 
 def _load_brand_strength_from_summary():
     if not os.path.exists(COMPOS_SUMMARY_PATH):

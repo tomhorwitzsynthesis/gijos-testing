@@ -333,8 +333,3 @@ def render():
                 st.markdown("#### Creativity Analysis")
                 _render_creativity_block(display_name, detail)
 
-    st.caption(
-        f"Metrics use press release data from {start_date:%b %Y} to {end_date:%b %Y} for filtering, "
-        "with a rolling window for trend comparisons."
-    )
-

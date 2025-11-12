@@ -59,7 +59,7 @@ if section == "Press Releases":
 elif section == "Social Media":
     st.title("📱 Social Media Dashboard")
     render_social_metrics(selected_platforms=["linkedin"])
-    # render_social_archetype_matrix()
+    render_social_archetype_matrix()
     render_social_trends(selected_platforms=["linkedin"])
     render_top_posts(selected_platforms=["linkedin"])
     # render_chatkit()

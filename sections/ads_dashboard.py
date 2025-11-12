@@ -12,6 +12,7 @@ import os
 import glob
 import re
 import unicodedata
+import html
 from utils.file_io import load_agility_data
 from utils.config import BRANDS, DATA_ROOT, BRAND_COLORS
 
@@ -637,8 +638,8 @@ def render():
                             </div>
                             """, unsafe_allow_html=True)
 
-    # --- Top Archetypes by Company ---
-    st.markdown("### Top Archetypes by Company")
+    # --- Archetype Matrix View ---
+    st.markdown("### Archetype Coverage Matrix")
     archetype_stats = _load_archetype_stats_from_summary()
     if not archetype_stats:
         archetype_stats = _load_archetype_stats_from_agility()
@@ -653,76 +654,9 @@ def render():
                 overall_counts[archetype] = overall_counts.get(archetype, 0) + count_int
                 overall_total += count_int
 
-    archetypes_data = {}
-    if archetype_stats:
-        for company, info in archetype_stats.items():
-            counts = info.get("counts", {})
-            total = info.get("total", 0)
-            if not counts or total <= 0:
-                continue
-            sorted_items = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-            top_items = []
-            for archetype, count in sorted_items[:3]:
-                pct = (count / total) * 100 if total else 0
-                top_items.append({
-                    "archetype": archetype,
-                    "percentage": pct,
-                    "count": int(count),
-                })
-            if top_items:
-                archetypes_data[company] = top_items
-
     if not archetype_stats:
         st.info("No archetype data available. Ensure compos files are in data/ads/compos or Agility files contain 'Top Archetype'.")
     else:
-        if archetypes_data:
-            overall_items = []
-            if overall_counts:
-                overall_top3 = sorted(overall_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-                for archetype, count in overall_top3:
-                    pct = (count / overall_total) * 100 if overall_total else 0
-                    overall_items.append({
-                        "archetype": archetype,
-                        "percentage": pct,
-                        "count": int(count),
-                    })
-
-            tab_labels = ["🌍 Overall"] + list(archetypes_data.keys())
-            company_tabs = st.tabs(tab_labels)
-            # Overall tab
-            with company_tabs[0]:
-                st.subheader("Overall - Top 3 Archetypes")
-                col1, col2, col3 = st.columns(3)
-                for j, archetype_info in enumerate(overall_items):
-                    col = col1 if j == 0 else col2 if j == 1 else col3
-                    with col:
-                        st.markdown(f"""
-                        <div style="border:1px solid #ddd; border-radius:10px; padding:10px; margin-bottom:10px; text-align:center;">
-                            <h4 style="margin:0; color:#333;">{archetype_info['archetype']}</h4>
-                            <h2 style="margin:5px 0; color:#333; font-size:2.0em;">{archetype_info['percentage']:.1f}%</h2>
-                            <p style="margin:0; color:#666; font-size:0.9em;">{archetype_info['count']} items</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-            # Company tabs
-            for i, (company, archetypes) in enumerate(archetypes_data.items()):
-                with company_tabs[i + 1]:
-                    st.subheader(f"{company} - Top 3 Archetypes")
-                    col1, col2, col3 = st.columns(3)
-                    for j, archetype_info in enumerate(archetypes):
-                        col = col1 if j == 0 else col2 if j == 1 else col3
-                        with col:
-                            st.markdown(f"""
-                            <div style="border:1px solid #ddd; border-radius:10px; padding:10px; margin-bottom:10px; text-align:center;">
-                                <h4 style="margin:0; color:#333;">{archetype_info['archetype']}</h4>
-                                <h2 style="margin:5px 0; color:#333; font-size:2.0em;">{archetype_info['percentage']:.1f}%</h2>
-                                <p style="margin:0; color:#666; font-size:0.9em;">{archetype_info['count']} items</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-        else:
-            st.info("No archetype data available. Ensure compos files are in data/ads/compos or Agility files contain 'Top Archetype'.")
-
-        # --- Archetype Matrix View ---
-        st.markdown("### Archetype Coverage Matrix")
         def _render_archetype_matrix(counts_dict, total_count):
             counts_dict = counts_dict or {}
             total = total_count if total_count and total_count > 0 else 0
@@ -762,9 +696,8 @@ def render():
                 st.subheader(f"{company} Archetype Distribution")
                 _render_archetype_matrix(info.get("counts", {}), info.get("total", 0))
 
-
-    st.markdown(
-    'Read more about brand archetypes here: [Brandtypes](https://www.comp-os.com/brandtypes)')
+        st.markdown(
+            'Read more about brand archetypes here: [Brandtypes](https://www.comp-os.com/brandtypes)')
         
 
     # --- Key Advantages ---
@@ -821,6 +754,9 @@ def render():
     st.plotly_chart(hist, use_container_width=True)
 
     # Text analysis and new campaigns sections can be added later as optional blocks
+
+    # Promotions Overview by Company
+    _render_promotions_overview()
 
 def _load_archetype_stats_from_summary():
     if not os.path.exists(COMPOS_SUMMARY_PATH):
@@ -881,6 +817,203 @@ def _load_brand_strength_from_summary():
             dominant = vc.iloc[0]
             strength[col] = (dominant / total) * 100
     return strength
+
+
+@st.cache_data(ttl=0)
+def _load_promotions_data():
+    """Load promotions data from ads_labeled_products.xlsx and return dict of company -> list of top 5 promotions with percentages and examples."""
+    path = os.path.join(DATA_ROOT, "ads", "products", "ads_labeled_products.xlsx")
+    if not os.path.exists(path):
+        return {}
+    
+    try:
+        df = pd.read_excel(path)
+        
+        # Check for required columns
+        if 'pageName' not in df.columns or 'cluster_1' not in df.columns:
+            return {}
+        
+        # Filter out rows with missing cluster_1
+        df = df[df['cluster_1'].notna()].copy()
+        
+        if df.empty:
+            return {}
+        
+        # Track used ad texts to ensure no duplicates across all companies
+        used_ad_texts = set()
+        
+        # Get text column name (could be 'snapshot/body/text' or 'snapshot/body')
+        text_col = None
+        for col in ['snapshot/body/text', 'snapshot/body']:
+            if col in df.columns:
+                text_col = col
+                break
+        
+        # Group by company and cluster_1, count occurrences
+        promotions_by_company = {}
+        
+        for company in df['pageName'].unique():
+            if pd.isna(company):
+                continue
+            
+            company_df = df[df['pageName'] == company]
+            cluster_counts = company_df['cluster_1'].value_counts()
+            total = len(company_df)
+            
+            # Calculate percentages and get top 5
+            top_5 = []
+            for cluster, count in cluster_counts.head(5).items():
+                percentage = (count / total) * 100 if total > 0 else 0
+                
+                # Get 2 unique examples for this promotion category
+                examples = []
+                if text_col:
+                    cluster_df = company_df[company_df['cluster_1'] == cluster]
+                    # Filter out rows with missing text
+                    cluster_df = cluster_df[cluster_df[text_col].notna()].copy()
+                    
+                    for _, row in cluster_df.iterrows():
+                        if len(examples) >= 2:
+                            break
+                        
+                        ad_text = str(row[text_col]).strip()
+                        if not ad_text or ad_text == 'nan':
+                            continue
+                        
+                        # Check if this exact text has been used before
+                        if ad_text not in used_ad_texts:
+                            # Truncate to 50 characters
+                            if len(ad_text) > 50:
+                                ad_text_display = ad_text[:50] + "..."
+                            else:
+                                ad_text_display = ad_text
+                            
+                            # Get adArchiveID for the link
+                            ad_id = None
+                            if 'adArchiveID' in row and pd.notna(row['adArchiveID']):
+                                ad_id = str(int(row['adArchiveID'])) if pd.notna(row['adArchiveID']) else None
+                            
+                            examples.append({
+                                'text': ad_text_display,
+                                'ad_id': ad_id
+                            })
+                            used_ad_texts.add(ad_text)
+                
+                top_5.append({
+                    'promotion': str(cluster),
+                    'percentage': percentage,
+                    'count': int(count),
+                    'examples': examples
+                })
+            
+            if top_5:
+                promotions_by_company[str(company)] = top_5
+        
+        return promotions_by_company
+    except Exception as e:
+        st.error(f"Error loading promotions data: {e}")
+        return {}
+
+
+def _render_promotions_overview():
+    """Render promotions overview with tabs per company showing top 5 promotions."""
+    promotions_data = _load_promotions_data()
+    
+    if not promotions_data:
+        st.info("No promotions data available.")
+        return
+    
+    st.markdown("### Promotions Overview by Company")
+    
+    # Get company names and order them (prefer BRAND_ORDER if available)
+    companies = list(promotions_data.keys())
+    ordered_companies = [c for c in BRAND_ORDER if c in companies]
+    extra_companies = sorted([c for c in companies if c not in BRAND_ORDER])
+    tab_labels = ordered_companies + extra_companies
+    
+    if not tab_labels:
+        st.info("No company data available.")
+        return
+    
+    tabs = st.tabs(tab_labels)
+    
+    for idx, company in enumerate(tab_labels):
+        with tabs[idx]:
+            promotions = promotions_data.get(company, [])
+            
+            if not promotions:
+                st.info(f"No promotions data available for {company}.")
+                continue
+            
+            st.subheader(f"{company} Promotions")
+            
+            # Display each promotion - category and examples on left, percentage on right
+            for promo in promotions:
+                promo_name = html.escape(str(promo['promotion']))
+                percentage = promo['percentage']
+                count = promo['count']
+                examples = promo.get('examples', [])
+                
+                # Create two columns: left for category + examples, right for percentage
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    # Box for promotion name (same width as examples)
+                    st.markdown(
+                        f"""
+                        <div style="border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:10px; background-color:#f9f9f9; box-shadow:0 2px 4px rgba(0,0,0,0.08);">
+                            <h5 style="margin:0; color:#333; font-weight:500;">{promo_name}</h5>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    
+                    # Display examples below the promotion (same width as category box)
+                    if examples:
+                        for example in examples:
+                            # Handle both dict format (new) and string format (old, for backward compatibility)
+                            if isinstance(example, dict):
+                                example_text = example.get('text', '')
+                                ad_id = example.get('ad_id')
+                            else:
+                                # Backward compatibility with old string format
+                                example_text = str(example)
+                                ad_id = None
+                            
+                            # Escape HTML to prevent injection
+                            escaped_text = html.escape(example_text)
+                            
+                            # Create link if ad_id is available
+                            if ad_id:
+                                # Escape the ad_id for URL safety
+                                escaped_ad_id = html.escape(str(ad_id))
+                                ad_url = f"https://www.facebook.com/ads/library/?id={escaped_ad_id}"
+                                example_html = f'<a href="{ad_url}" target="_blank" style="color:#2FB375; text-decoration:none;">"{escaped_text}"</a>'
+                            else:
+                                example_html = f'"{escaped_text}"'
+                            
+                            st.markdown(
+                                f"""
+                                <div style="border:1px solid #e0e0e0; border-radius:10px; padding:12px; margin-bottom:10px; background-color:#fafafa; font-style:italic; color:#555;">
+                                    <p style="margin:0; font-size:0.9em;">{example_html}</p>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                
+                with col2:
+                    # Calculate number of boxes on left (1 category + examples)
+                    num_boxes = 1 + len(examples)
+                    # Box for percentage - use flexbox to match height
+                    st.markdown(
+                        f"""
+                        <div style="border:1px solid #2FB375; border-radius:10px; padding:15px; background-color:#F5FFF9; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.08); display:flex; flex-direction:column; justify-content:center; min-height:{num_boxes * 60}px;">
+                            <h3 style="margin:0; color:#2FB375; font-weight:bold;">{percentage:.1f}%</h3>
+                            <p style="margin:4px 0 0; color:#666; font-size:0.85em;">{count} ads</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
 
 
 

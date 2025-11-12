@@ -1,4 +1,12 @@
 import streamlit as st
+
+# Set page configuration - must be called before any other Streamlit commands
+st.set_page_config(
+    layout="wide",  # Always use wide mode
+    page_title="Dashboard",  # Page title in browser tab
+    initial_sidebar_state="expanded"  # Sidebar expanded by default
+)
+
 from utils.date_utils import init_month_selector
 
 # --- Section Imports ---
@@ -8,10 +16,13 @@ from sections.topical_analysis import render as render_topics
 from sections.volume_trends import render as render_volume
 from sections.media_coverage import render as render_media_shares
 from sections.pr_metrics import render as render_pr_metrics
+from sections.pr_archetype_matrix import render as render_pr_archetype_matrix
 
 from sections.volume_engagement_trends import render as render_social_trends
 from sections.social_media_top_posts import render as render_top_posts
 from sections.social_media_metrics import render as render_social_metrics
+from sections.social_media_archetype_matrix import render as render_social_archetype_matrix
+from sections.social_media_chatkit import render as render_chatkit
 
 from sections.content_pillars import render as render_content_pillars
 
@@ -38,6 +49,7 @@ init_month_selector()  # Sets start_date / end_date globally
 if section == "Press Releases":
     st.title("📰 Press Release Dashboard")
     render_pr_metrics()
+    render_pr_archetype_matrix()
     render_matrix()
     render_sentiment(mode="by_company")
     render_topics()
@@ -47,8 +59,10 @@ if section == "Press Releases":
 elif section == "Social Media":
     st.title("📱 Social Media Dashboard")
     render_social_metrics(selected_platforms=["linkedin"])
+    # render_social_archetype_matrix()
     render_social_trends(selected_platforms=["linkedin"])
     render_top_posts(selected_platforms=["linkedin"])
+    # render_chatkit()
 
 elif section == "Content Pillars":
     st.title("🧱 Content Pillar Dashboard")

@@ -280,8 +280,8 @@ def _load_employer_branding_data():
     
     data_by_company = {}
     
-    # Get all JSON files
-    json_files = list(employer_branding_dir.glob("*.json"))
+    # Get all JSON files (excluding comparison.json)
+    json_files = [f for f in employer_branding_dir.glob("*.json") if f.name != "comparison.json"]
     
     for json_file in json_files:
         try:
@@ -303,6 +303,23 @@ def _load_employer_branding_data():
             continue
     
     return data_by_company
+
+
+@st.cache_data(ttl=0)
+def _load_comparison_data():
+    """Load comparison.json file and return the comparison data."""
+    comparison_path = Path(DATA_ROOT) / "employer_branding" / "comparison.json"
+    
+    if not comparison_path.exists():
+        return None
+    
+    try:
+        with open(comparison_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+    except Exception as e:
+        st.error(f"Error loading comparison.json: {e}")
+        return None
 
 
 def _normalize_company_name(company: str) -> str:
@@ -332,30 +349,133 @@ def _normalize_company_name(company: str) -> str:
     return company_str
 
 
+def _render_comparison_tab(comparison_data):
+    """Render the comparison tab showing commonalities and differences across companies."""
+    if not comparison_data or 'themes' not in comparison_data:
+        st.info("No comparison data available.")
+        return
+    
+    st.subheader("Cross-Company Comparison")
+    st.markdown("Analysis of commonalities and differences across all companies.")
+    
+    themes = comparison_data.get('themes', {})
+    
+    for theme_key, theme_data in themes.items():
+        if not isinstance(theme_data, dict):
+            continue
+        
+        # Get display name for theme
+        theme_display_name = THEME_DISPLAY_NAMES.get(theme_key, theme_key.replace('_', ' ').title())
+        
+        st.markdown(f"### {theme_display_name}")
+        
+        # Common section
+        common = theme_data.get('common', {})
+        if common:
+            st.markdown("#### Common Across Companies")
+            
+            common_tags = common.get('tags', [])
+            if common_tags:
+                cols = st.columns(3)
+                for i, tag in enumerate(common_tags[:3]):
+                    with cols[i]:
+                        escaped_tag = html.escape(str(tag))
+                        st.markdown(
+                            f"""
+                            <div style="background-color:#2FB375; color:white; padding:12px 16px; border-radius:20px; text-align:center; font-weight:500; font-size:0.9em; margin-bottom:15px;">
+                                {escaped_tag}
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+            
+            common_summary = common.get('summary', '')
+            if common_summary:
+                escaped_summary = html.escape(str(common_summary))
+                st.markdown(
+                    f"""
+                    <div style="background-color:#f9f9f9; padding:15px; border-radius:10px; border-left:4px solid #2FB375; margin-bottom:25px;">
+                        <p style="margin:0; color:#333; line-height:1.6; font-size:0.95em;">{escaped_summary}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+        
+        # Differences section
+        differences = theme_data.get('differences', {})
+        if differences:
+            st.markdown("#### Key Differences")
+            
+            diff_tags = differences.get('tags', [])
+            if diff_tags:
+                cols = st.columns(3)
+                for i, tag in enumerate(diff_tags[:3]):
+                    with cols[i]:
+                        escaped_tag = html.escape(str(tag))
+                        st.markdown(
+                            f"""
+                            <div style="background-color:#FFA726; color:white; padding:12px 16px; border-radius:20px; text-align:center; font-weight:500; font-size:0.9em; margin-bottom:15px;">
+                                {escaped_tag}
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+            
+            diff_summary = differences.get('summary', '')
+            if diff_summary:
+                escaped_summary = html.escape(str(diff_summary))
+                st.markdown(
+                    f"""
+                    <div style="background-color:#FFF3E0; padding:15px; border-radius:10px; border-left:4px solid #FFA726; margin-bottom:25px;">
+                        <p style="margin:0; color:#333; line-height:1.6; font-size:0.95em;">{escaped_summary}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+        
+        # Add spacing between themes
+        st.markdown("<br>", unsafe_allow_html=True)
+
+
 def render():
     """Render employer branding overview with tabs per company showing themes with tags and summaries."""
     data_by_company = _load_employer_branding_data()
+    comparison_data = _load_comparison_data()
     
-    if not data_by_company:
+    if not data_by_company and not comparison_data:
         st.info("No employer branding data available.")
         return
     
-    st.markdown("### Employer Branding Analysis by Company")
+    st.markdown("### Employer Branding Analysis")
     
     # Get company names and order them (prefer BRAND_ORDER if available)
     companies = list(data_by_company.keys())
     ordered_companies = [c for c in BRAND_ORDER if c in companies]
     extra_companies = sorted([c for c in companies if c not in BRAND_ORDER])
-    tab_labels = ordered_companies + extra_companies
+    
+    # Create tab labels - add comparison tab first if available
+    tab_labels = []
+    if comparison_data:
+        tab_labels.append("🔍 Comparison")
+    tab_labels.extend(ordered_companies + extra_companies)
     
     if not tab_labels:
-        st.info("No company data available.")
+        st.info("No data available.")
         return
     
     tabs = st.tabs(tab_labels)
     
-    for idx, company in enumerate(tab_labels):
-        with tabs[idx]:
+    # Render comparison tab if available
+    tab_idx = 0
+    if comparison_data:
+        with tabs[tab_idx]:
+            _render_comparison_tab(comparison_data)
+        tab_idx += 1
+    
+    # Render company tabs
+    company_list = ordered_companies + extra_companies
+    for idx, company in enumerate(company_list):
+        with tabs[tab_idx + idx]:
             themes = data_by_company.get(company, {})
             
             if not themes:

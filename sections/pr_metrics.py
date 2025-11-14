@@ -212,11 +212,17 @@ def _render_summary_tabs(summary_records):
         summary = record.get("summary", "")
         if not brand or not summary:
             continue
-        brand_to_summary[brand] = summary
-        brand_to_media[brand] = record.get("media_type")
+        # Normalize brand name using BRAND_NAME_MAPPING
+        normalized_brand = BRAND_NAME_MAPPING.get(brand, brand)
+        # Only include brands that are in our BRANDS list (current brands)
+        if normalized_brand in BRANDS:
+            # If we already have this brand, keep the first one (avoid duplicates)
+            if normalized_brand not in brand_to_summary:
+                brand_to_summary[normalized_brand] = summary
+                brand_to_media[normalized_brand] = record.get("media_type")
     if not brand_to_summary:
         return
-    preferred_order = [BRAND_NAME_MAPPING.get(b, b) for b in BRANDS]
+    preferred_order = BRANDS  # Use BRANDS directly
     ordered = [b for b in preferred_order if b in brand_to_summary]
     extras = sorted([b for b in brand_to_summary.keys() if b not in ordered])
     tab_labels = ordered + extras

@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.config import BRAND_NAME_MAPPING
+from utils.config import BRAND_NAME_MAPPING, BRANDS
 from utils.date_utils import get_selected_date_range
 from utils.file_io import load_social_data
 
@@ -23,8 +23,25 @@ def render(selected_platforms=None):
         st.markdown(f"### {platform.capitalize()}")
         all_posts = []
 
-        for brand_key, brand_display in BRAND_NAME_MAPPING.items():
-            df = load_social_data(brand_key, platform)
+        # Iterate over BRANDS and use mapping to get file name key
+        for brand_display in BRANDS:
+            # Find all possible keys that map to this brand
+            possible_keys = [key for key, value in BRAND_NAME_MAPPING.items() if value == brand_display]
+            # Prefer keys that are lowercase/hyphenated (these are more likely to be in the data file)
+            # Sort by: 1) keys with hyphens first, 2) lowercase keys, 3) others
+            possible_keys.sort(key=lambda k: (("-" not in k.lower(), k != k.lower(), k)))
+            
+            # Try each key until we find one that returns data
+            df = None
+            for brand_key in possible_keys:
+                df = load_social_data(brand_key, platform)
+                if df is not None and not df.empty:
+                    break
+            
+            # If no key worked, try the fallback
+            if df is None or df.empty:
+                brand_key = brand_display.lower().replace(" ", "-")
+                df = load_social_data(brand_key, platform)
             if df is None or df.empty or "Published Date" not in df.columns:
                 continue
 
@@ -67,7 +84,8 @@ def render(selected_platforms=None):
 
         df_all = pd.DataFrame(all_posts).sort_values(by="Engagement", ascending=False)
 
-        brand_display_names = list(BRAND_NAME_MAPPING.values())
+        # Use BRANDS to avoid duplicates
+        brand_display_names = BRANDS
         tab_labels = ["🌍 Overall"] + [f"🏢 {brand}" for brand in brand_display_names]
         tabs = st.tabs(tab_labels)
 

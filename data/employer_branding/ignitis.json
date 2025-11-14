@@ -1,0 +1,46 @@
+{
+    "company": "Ignitis",
+    "themes": {
+      "value_proposition": {
+        "tags": [
+          "Green energy ecosystem",
+          "International energy group",
+          "Top Employer status"
+        ],
+        "summary": "Positions itself as a modern, reputable energy group where you help build a 100% green and safe energy ecosystem across several countries, backed by Top Employer recognition and a competitive, modern benefits package."
+      },
+      "purpose_impact": {
+        "tags": [
+          "Green transition impact",
+          "National energy security",
+          "Regional renewables growth"
+        ],
+        "summary": "Frames work as contributing directly to the green transition and a safe, reliable energy system, emphasising projects of national importance, regional operations in five countries and ambitious renewable capacity targets for 2030."
+      },
+      "target_talent_profile": {
+        "tags": [
+          "Engineers & IT experts",
+          "Finance, legal, business",
+          "Early and mid-career talent"
+        ],
+        "summary": "Targets a broad spectrum of professionals with a clear focus on engineering and IT, but also finance, legal and business support roles, inviting both experienced specialists and those starting or reshaping their careers in the energy sector."
+      },
+      "company_culture": {
+        "tags": [
+          "International, diverse community",
+          "Well-being & flexibility focus",
+          "Structured selection process"
+        ],
+        "summary": "Describes an international community of 4600+ colleagues with a friendly, diverse and inclusive environment, hybrid 3+2 work model, flexible hours, strong attention to physical and emotional well-being and a clearly explained, step-by-step recruitment process."
+      },
+      "learning_possibilities": {
+        "tags": [
+          "Extensive learning programs",
+          "Cross-field mobility options",
+          "Complex ‘Harvard of energy’ domain"
+        ],
+        "summary": "Highlights extensive learning and professional development programs, opportunities to move between engineering, IT, finance, legal and other fields, and positions the complexity of energy law and green energy projects as a high-level learning environment in itself."
+      }
+    }
+  }
+  

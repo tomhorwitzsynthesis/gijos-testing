@@ -5,7 +5,7 @@ import glob
 import streamlit as st
 import pandas as pd
 
-from utils.config import BRAND_NAME_MAPPING, DATA_ROOT
+from utils.config import BRAND_NAME_MAPPING, DATA_ROOT, BRANDS
 from utils.date_utils import get_selected_date_range
 from utils.file_io import load_social_data, load_creativity_rankings, load_brand_summaries
 
@@ -65,8 +65,25 @@ def _numeric_series(df: pd.DataFrame, column: str) -> pd.Series:
 @st.cache_data(ttl=0)
 def _load_social_frames(platform: str = "linkedin"):
     frames = {}
-    for brand_key, brand_display in BRAND_NAME_MAPPING.items():
-        df = load_social_data(brand_key, platform)
+    # Iterate over BRANDS and use mapping to get file name key
+    for brand_display in BRANDS:
+        # Find all possible keys that map to this brand
+        possible_keys = [key for key, value in BRAND_NAME_MAPPING.items() if value == brand_display]
+        # Prefer keys that are lowercase/hyphenated (these are more likely to be in the data file)
+        # Sort by: 1) keys with hyphens first, 2) lowercase keys, 3) others
+        possible_keys.sort(key=lambda k: (("-" not in k.lower(), k != k.lower(), k)))
+        
+        # Try each key until we find one that returns data
+        df = None
+        for brand_key in possible_keys:
+            df = load_social_data(brand_key, platform)
+            if df is not None and not df.empty:
+                break
+        
+        # If no key worked, try the fallback
+        if df is None or df.empty:
+            brand_key = brand_display.lower().replace(" ", "-")
+            df = load_social_data(brand_key, platform)
         if df is None or df.empty:
             continue
         if "Published Date" not in df.columns:
@@ -94,6 +111,11 @@ def _load_social_brand_strength():
         if fname.startswith("~$"):
             continue
         brand_candidate = fname.replace("_compos_analysis.xlsx", "").replace(".xlsx", "").strip()
+        # Normalize brand name from file name to canonical name
+        normalized_brand = BRAND_NAME_MAPPING.get(brand_candidate, brand_candidate)
+        # Only process if it's one of our current brands
+        if normalized_brand not in BRANDS:
+            continue
         try:
             try:
                 df_comp = pd.read_excel(path, sheet_name="Raw Data")
@@ -106,7 +128,7 @@ def _load_social_brand_strength():
         counts = df_comp["Top Archetype"].dropna().value_counts()
         total = counts.sum()
         if total > 0:
-            strength[brand_candidate] = float(counts.iloc[0] / total * 100)
+            strength[normalized_brand] = float(counts.iloc[0] / total * 100)
     return strength
 
 
@@ -161,7 +183,13 @@ def _compute_creativity_stats() -> Tuple[Dict[str, dict], int, Dict[str, dict]]:
     if df is None or df.empty:
         return {}, 0, {}
     df = df.copy()
-    df["brand_norm"] = df["brand"].apply(_normalize_brand)
+    # Normalize brand names from creativity file using BRAND_NAME_MAPPING
+    df["brand_normalized"] = df["brand"].apply(lambda b: BRAND_NAME_MAPPING.get(str(b).strip(), str(b).strip()))
+    # Only keep brands that are in our BRANDS list
+    df = df[df["brand_normalized"].isin(BRANDS)].copy()
+    if df.empty:
+        return {}, 0, {}
+    df["brand_norm"] = df["brand_normalized"].apply(_normalize_brand)
     df["rank"] = pd.to_numeric(df["rank"], errors="coerce")
     df["originality_score"] = pd.to_numeric(df["originality_score"], errors="coerce")
     df = df.dropna(subset=["originality_score"])
@@ -174,7 +202,7 @@ def _compute_creativity_stats() -> Tuple[Dict[str, dict], int, Dict[str, dict]]:
     details = {}
     for _, row in df.iterrows():
         details[row["brand_norm"]] = {
-            "brand": row["brand"],
+            "brand": row["brand_normalized"],  # Use normalized brand name
             "rank": int(row["rank"]) if not pd.isna(row["rank"]) else None,
             "score": float(row["originality_score"]),
             "justification": row.get("justification", ""),
@@ -185,7 +213,7 @@ def _compute_creativity_stats() -> Tuple[Dict[str, dict], int, Dict[str, dict]]:
             "delta": float(row["delta_vs_mean_pct"]) if not pd.isna(row["delta_vs_mean_pct"]) else None,
             "rank": int(row["rank"]) if not pd.isna(row["rank"]) else None,
         }
-    return stats, df["brand"].nunique(), details
+    return stats, df["brand_normalized"].nunique(), details
 
 
 def _render_creativity_block(display_name: str, detail: Dict[str, object]) -> None:
@@ -240,10 +268,38 @@ def _render_summary_tabs(summary_records):
         brand_to_media[brand] = record.get("media_type")
     if not brand_to_summary:
         return
-    preferred_order = list(BRAND_NAME_MAPPING.values())
+    # Normalize brand names from summaries using BRAND_NAME_MAPPING
+    normalized_brand_to_summary = {}
+    normalized_brand_to_media = {}
+    for brand, summary in brand_to_summary.items():
+        normalized_brand = BRAND_NAME_MAPPING.get(brand, brand)
+        # Only include brands that are in our BRANDS list (current brands)
+        if normalized_brand in BRANDS:
+            # If already normalized, use it; otherwise try to find the canonical name
+            if normalized_brand not in normalized_brand_to_summary:
+                normalized_brand_to_summary[normalized_brand] = summary
+                normalized_brand_to_media[normalized_brand] = brand_to_media.get(brand)
+            # If we have duplicates (e.g., "Ignitis" and "Ignitis grupe"), merge them
+            elif normalized_brand in normalized_brand_to_summary:
+                # Keep the first one or merge summaries if needed
+                pass
+    
+    brand_to_summary = normalized_brand_to_summary
+    brand_to_media = normalized_brand_to_media
+    
+    # If no brands remain after filtering, don't show summary tabs
+    if not brand_to_summary:
+        return
+    
+    preferred_order = BRANDS  # Use BRANDS directly instead of BRAND_NAME_MAPPING.values()
     ordered = [b for b in preferred_order if b in brand_to_summary]
     extras = sorted([b for b in brand_to_summary.keys() if b not in ordered])
     tab_labels = ordered + extras
+    
+    # Ensure we have at least one tab label
+    if not tab_labels:
+        return
+    
     st.markdown("### Executive Summary")
     tabs = st.tabs(tab_labels)
     card_style = (
@@ -295,14 +351,19 @@ def render(selected_platforms=None):
 
     available_brands = []
     seen = set()
-    for display in BRAND_NAME_MAPPING.values():
+    # Use BRANDS to avoid duplicates
+    for display in BRANDS:
         norm = _normalize_brand(display)
         if (norm in engagement_stats) or (norm in strength_stats) or (norm in creativity_stats):
             available_brands.append(display)
             seen.add(display)
     extra_keys = set(engagement_stats.keys()) | set(strength_stats.keys()) | set(creativity_stats.keys())
     for norm in sorted(extra_keys):
-        display = next((name for name in frames.keys() if _normalize_brand(name) == norm), norm.title())
+        # Try to find the brand name from frames or use normalized name
+        display = next((name for name in frames.keys() if _normalize_brand(name) == norm), None)
+        if display is None:
+            # Try to find in BRANDS
+            display = next((b for b in BRANDS if _normalize_brand(b) == norm), norm.title())
         if display not in seen:
             available_brands.append(display)
             seen.add(display)

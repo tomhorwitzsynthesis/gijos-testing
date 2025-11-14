@@ -23,11 +23,14 @@ from sections.social_media_top_posts import render as render_top_posts
 from sections.social_media_metrics import render as render_social_metrics
 from sections.social_media_archetype_matrix import render as render_social_archetype_matrix
 from sections.social_media_chatkit import render as render_chatkit
+from sections.social_media_employer_branding_themes import render as render_employer_branding_themes
 
 from sections.content_pillars import render as render_content_pillars
 
 from sections.audience_affinity import render as render_audience_affinity
 from sections.ads_dashboard import render as render_ads_dashboard
+from sections.ads_employer_branding_themes import render as render_ads_employer_branding_themes
+from sections.employer_branding import render as render_employer_branding
 
 #from sections.content_pillar_analysis import render as render_pillars  # If implemented
 # from sections.audience_affinity import render as render_affinity     # Optional
@@ -39,7 +42,8 @@ section = st.sidebar.radio("Go to", [
     "Social Media",
     "Content Pillars",
     "Audience Affinity",
-    "Ad Intelligence"
+    "Ad Intelligence",
+    "Employer Branding"
 ])
 
 # --- Month Filter ---
@@ -62,6 +66,7 @@ elif section == "Social Media":
     render_social_archetype_matrix()
     render_social_trends(selected_platforms=["linkedin"])
     render_top_posts(selected_platforms=["linkedin"])
+    render_employer_branding_themes()
     # render_chatkit()
 
 elif section == "Content Pillars":
@@ -77,3 +82,8 @@ elif section == "Audience Affinity":
 elif section == "Ad Intelligence":
     st.title("📣 Ad Intelligence Dashboard")
     render_ads_dashboard()
+    render_ads_employer_branding_themes()
+
+elif section == "Employer Branding":
+    st.title("💼 Employer Branding Dashboard")
+    render_employer_branding()

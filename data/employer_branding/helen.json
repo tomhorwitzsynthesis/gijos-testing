@@ -1,0 +1,46 @@
+{
+    "company": "Helen",
+    "themes": {
+      "value_proposition": {
+        "tags": [
+          "Clean energy future",
+          "Strong transformation",
+          "Modern Helsinki HQ"
+        ],
+        "summary": "Positions itself as an energy company in strong transformation towards clean and flexible energy, offering work on future-oriented heating, cooling and electricity solutions from modern offices in central Helsinki and in roles that sit close to core business and technology."
+      },
+      "purpose_impact": {
+        "tags": [
+          "Decarbonised energy system",
+          "Reliable heat and power",
+          "Nuclear programme projects"
+        ],
+        "summary": "Frames its purpose as building a clean and flexible energy future for customers in Finland, ensuring reliable heat, cooling and electricity while developing new solutions and partnerships; some roles (e.g. nuclear programme communications) explicitly link the work to long-term, low-emission and competitive energy availability for society."
+      },
+      "target_talent_profile": {
+        "tags": [
+          "Energy engineers & experts",
+          "Project & comms specialists",
+          "Data-driven business profiles"
+        ],
+        "summary": "Job ads target experienced professionals: automation and mechanical/process engineers, project and communications specialists in the nuclear energy programme, and analytically strong business profiles working with customer and heating/cooling data; ads are written in Finnish, and there is no explicit messaging to students, graduates or entry-level candidates."
+      },
+      "company_culture": {
+        "tags": [
+          "Change-driven mindset",
+          "Cross-functional collaboration",
+          "Customer-centric approach"
+        ],
+        "summary": "Describes a company that is renewing itself strongly and continuously developing a smarter, cleaner energy system, with roles that require collaboration across technical, project, communication and business teams; the culture is portrayed through themes of transformation and customer value rather than detailed statements about leadership style or internal values."
+      },
+      "learning_possibilities": {
+        "tags": [
+          "Development only implied",
+          "No concrete programmes",
+          "Learning via complex work"
+        ],
+        "summary": "In the available job ads, personal learning and career development are not described as a separate offering; development is only indirectly implied through exposure to complex energy systems, nuclear-related projects and data-intensive business work, and there is no explicit mention of structured training, internal academies or defined career paths."
+      }
+    }
+  }
+  

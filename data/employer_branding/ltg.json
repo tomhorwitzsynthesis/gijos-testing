@@ -1,0 +1,46 @@
+{
+    "company": "LTG",
+    "themes": {
+      "value_proposition": {
+        "tags": [
+          "Progress in movement",
+          "Major rail projects",
+          "State-backed stability"
+        ],
+        "summary": "Positions itself as the backbone of national and regional rail transport, offering stable state-owned employment and the chance to work on flagship projects like Rail Baltica, electrification and the FREE Rail program across a wide range of specialties."
+      },
+      "purpose_impact": {
+        "tags": [
+          "Sustainable transport",
+          "Regional connectivity",
+          "Energy security focus"
+        ],
+        "summary": "Frames its mission as creating progress in movement by shifting passengers and cargo to more sustainable rail, strengthening Baltic–Europe connectivity and contributing to security and reduced dependence on external energy and transport systems."
+      },
+      "target_talent_profile": {
+        "tags": [
+          "Technical & operations",
+          "Corporate specialists",
+          "Students & graduates"
+        ],
+        "summary": "Targets a very broad talent pool: blue-collar and technical roles (mechanics, electricians, infrastructure workers), corporate and expert roles (HR, procurement, contracts, services) and explicitly students and young talent through practice, internships and long-term transport career initiatives."
+      },
+      "company_culture": {
+        "tags": [
+          "Work–rest balance",
+          "Innovation mindset",
+          "Trust and cooperation"
+        ],
+        "summary": "Describes a culture built around work–rest balance, openness, trust-based cooperation and responsibility for results, reinforced by a strong emphasis on innovation, use of modern technologies and an international, diverse environment across several countries."
+      },
+      "learning_possibilities": {
+        "tags": [
+          "Continuous learning",
+          "Internships & labs",
+          "Flexible development"
+        ],
+        "summary": "Very clearly positions learning as a core pillar, offering continuous learning in a flexible environment, structured programs like practice opportunities, the Rising Leaders summer internship and the Transport Career Lab, and on-the-job growth through complex, long-term rail and infrastructure projects."
+      }
+    }
+  }
+  

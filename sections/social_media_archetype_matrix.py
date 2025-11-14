@@ -147,6 +147,11 @@ def _load_archetype_stats_from_compos():
         if fname.startswith("~$"):
             continue
         brand_display = fname.replace("_compos_analysis.xlsx", "").replace(".xlsx", "").strip()
+        # Normalize brand name from file name to canonical name
+        normalized_brand = BRAND_NAME_MAPPING.get(brand_display, brand_display)
+        # Only process if it's one of our current brands
+        if normalized_brand not in BRANDS:
+            continue
         try:
             try:
                 df_comp = pd.read_excel(path, sheet_name="Raw Data")
@@ -172,7 +177,7 @@ def _load_archetype_stats_from_compos():
             total = int(sum(canonical_counts.values()))
             if total == 0:
                 continue
-            stats[brand_display] = {
+            stats[normalized_brand] = {
                 "total": total,
                 "counts": canonical_counts,
             }

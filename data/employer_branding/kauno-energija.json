@@ -1,0 +1,46 @@
+{
+    "company": "Kauno energija",
+    "themes": {
+      "value_proposition": {
+        "tags": [
+          "Advanced energy company",
+          "Meaningful local impact",
+          "Modern benefits package"
+        ],
+        "summary": "Positions itself as a modern, advanced district heating and energy company in Kaunas, offering meaningful work on strategic projects that shape the city’s and Lithuania’s energy future, combined with remote-work options, extra leave and financial support at key life events."
+      },
+      "purpose_impact": {
+        "tags": [
+          "Reliable heat supply",
+          "Strategic energy projects",
+          "Kaunas and Lithuania focus"
+        ],
+        "summary": "Defines its purpose around reliable and efficient centralised heat supply and strategic energy projects, repeatedly stressing that employees contribute to initiatives influencing not only Kaunas but also the broader Lithuanian energy landscape."
+      },
+      "target_talent_profile": {
+        "tags": [
+          "Technical and specialist roles",
+          "Mid-level professionals",
+          "Public sector context"
+        ],
+        "summary": "Job ads target experienced specialists such as public procurement experts, LoRa/IoT project and sales managers, and electricians with relevant certifications and several years of experience; there is no explicit focus on graduates or early-career talent, and the desired profile is mainly technical and function-specific within a regulated, municipal-type environment."
+      },
+      "company_culture": {
+        "tags": [
+          "Ambitious, inspiring team",
+          "Idea-friendly environment",
+          "Community-building events"
+        ],
+        "summary": "Describes a culture built on ambition and meaningful change, highlighting an inspiring team of professionals, openness to employees’ ideas (“green light” for improvements) and regular internal events that foster a positive, community-oriented atmosphere; there is no detailed description of leadership style or decision-making beyond this."
+      },
+      "learning_possibilities": {
+        "tags": [
+          "Training and courses",
+          "Qualification upgrading",
+          "Growth encouraged"
+        ],
+        "summary": "Explicitly promises space to grow through participation in trainings, qualification upgrades and new knowledge, linking development to working on complex, strategically important projects; however, there is no mention of structured career paths, formal academies or clear internal mobility programs."
+      }
+    }
+  }
+  

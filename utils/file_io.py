@@ -64,7 +64,21 @@ def load_creativity_rankings(media_type: str) -> pd.DataFrame:
 # ------------------------
 @st.cache_data
 def load_agility_data(company_name: str):
-    path = os.path.join(DATA_ROOT, "agility", f"{company_name.lower()}_agility.xlsx")
+    # Convert brand name to file name format (lowercase, spaces to hyphens)
+    # First try to find the file name key from BRAND_NAME_MAPPING
+    file_name_key = None
+    for key, value in BRAND_NAME_MAPPING.items():
+        if value == company_name:
+            # Prefer lowercase/hyphenated versions for file names
+            if key.lower() == key or "-" in key:
+                file_name_key = key
+                break
+    
+    # If not found in mapping, convert to file name format
+    if file_name_key is None:
+        file_name_key = company_name.lower().replace(" ", "-")
+    
+    path = os.path.join(DATA_ROOT, "agility", f"{file_name_key}_agility.xlsx")
     if not os.path.exists(path):
         return None
     try:
@@ -110,7 +124,27 @@ def load_social_data(company_name: str, platform: str = "linkedin"):
 		st.error("[Social] Company column 'user_id' not found in linkedin_posts.xlsx")
 		return None
 
-	df = df[df[company_col].astype(str).str.strip().str.lower() == company_name.lower()].copy()
+	# Try to match company_name (which might be a file name key like "exergi" or "kauno-energija")
+	# against the user_id column. Also try normalized versions.
+	company_name_lower = company_name.lower().strip()
+	
+	# First try exact match (case-insensitive)
+	mask = df[company_col].astype(str).str.strip().str.lower() == company_name_lower
+	if not mask.any():
+		# Try matching against BRAND_NAME_MAPPING - check if any user_id values match
+		# the canonical brand name or any of its variations
+		canonical_name = BRAND_NAME_MAPPING.get(company_name, company_name)
+		# Try matching canonical name
+		mask = df[company_col].astype(str).str.strip().str.lower() == canonical_name.lower()
+		if not mask.any():
+			# Try all variations in BRAND_NAME_MAPPING that map to this canonical name
+			for key, value in BRAND_NAME_MAPPING.items():
+				if value == canonical_name:
+					mask = df[company_col].astype(str).str.strip().str.lower() == key.lower()
+					if mask.any():
+						break
+	
+	df = df[mask].copy()
 	if df.empty:
 		return None
 

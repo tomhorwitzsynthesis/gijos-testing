@@ -1,0 +1,46 @@
+{
+    "company": "Exergi",
+    "themes": {
+      "value_proposition": {
+        "tags": [
+          "Stockholmers’ energy company",
+          "Exciting work environment",
+          "Sustainable city focus"
+        ],
+        "summary": "Positions itself as Stockholm’s local energy company offering an exciting working environment where you can transform ideas into reality, make the most of your energy and contribute directly to a more sustainable Stockholm."
+      },
+      "purpose_impact": {
+        "tags": [
+          "Climate-smart Stockholm",
+          "Lower city emissions",
+          "Social responsibility"
+        ],
+        "summary": "Frames its purpose as providing energy solutions that enable a sustainable and climate-smart Stockholm, explicitly linking operations to major reductions in the city’s emissions and emphasising social responsibility through youth employment, apprenticeships and community initiatives."
+      },
+      "target_talent_profile": {
+        "tags": [
+          "Technical specialists",
+          "On-site Stockholm roles",
+          "Swedish-speaking professionals"
+        ],
+        "summary": "Job ads target primarily technical and project-oriented profiles such as maintenance technicians, operations engineers, construction project managers and project buyers, working on-site in Stockholm; roles assume relevant professional background and Swedish-language context, with no prominent emphasis on international hires or graduate/entry-level programmes beyond separate youth/apprenticeship initiatives."
+      },
+      "company_culture": {
+        "tags": [
+          "Committed local team",
+          "Value-driven employer",
+          "Community engagement"
+        ],
+        "summary": "Describes a culture built on hundreds of committed people working for Stockholmers, with strong emphasis on social sustainability, community engagement and a clear promise that employees can grow and develop; the tone is value-driven and community-oriented rather than corporate, though leadership style and internal decision-making are not described in detail."
+      },
+      "learning_possibilities": {
+        "tags": [
+          "Grow and develop promise",
+          "Youth apprenticeships",
+          "Training initiatives mentioned"
+        ],
+        "summary": "States explicitly that employees can grow and develop and that the company gives you opportunities to make the most of your energy, but provides limited detail on structured internal learning programmes; most concrete development descriptions relate to external-facing initiatives such as apprenticeships, My Dream Now and mentoring for young people, so formal employee training paths are implied rather than clearly outlined."
+      }
+    }
+  }
+  

@@ -14,7 +14,7 @@ import re
 import unicodedata
 import html
 from utils.file_io import load_agility_data
-from utils.config import BRANDS, DATA_ROOT, BRAND_COLORS
+from utils.config import BRANDS, DATA_ROOT, BRAND_COLORS, BRAND_NAME_MAPPING
 
 BRAND_ORDER = list(BRAND_COLORS.keys())
 DEFAULT_COLOR = "#BDBDBD"  # used for any brand not in BRAND_COLORS
@@ -80,13 +80,23 @@ def _render_summary_tabs(summary_records):
         summary = record.get("summary", "")
         if not brand or not summary:
             continue
-        brand_to_summary[brand] = summary
-        brand_to_media[brand] = record.get("media_type")
+        # Normalize brand name using BRAND_NAME_MAPPING
+        normalized_brand = BRAND_NAME_MAPPING.get(brand, brand)
+        # Only include brands that are in our BRAND_ORDER (current brands)
+        if normalized_brand in BRAND_ORDER:
+            # If we already have this brand, keep the first one (avoid duplicates)
+            if normalized_brand not in brand_to_summary:
+                brand_to_summary[normalized_brand] = summary
+                brand_to_media[normalized_brand] = record.get("media_type")
+    # If no brands remain after filtering, don't show summary tabs
     if not brand_to_summary:
         return
     ordered_brands = [b for b in BRAND_ORDER if b in brand_to_summary]
     extra_brands = sorted([b for b in brand_to_summary.keys() if b not in BRAND_ORDER])
     tab_labels = ordered_brands + extra_brands
+    # Ensure we have at least one tab label
+    if not tab_labels:
+        return
     st.markdown("### Executive Summary")
     tabs = st.tabs(tab_labels)
     card_style = (
@@ -200,9 +210,14 @@ def _load_brand_strength_from_ads_compos():
     if os.path.isdir(ADS_COMPOS_DIR):
         for path in glob.glob(os.path.join(ADS_COMPOS_DIR, "*.xlsx")):
             fname = os.path.basename(path)
-            if fname.startswith("~$"):
+            if fname.startswith("~$") or fname == "compos_summary.xlsx":
                 continue
             brand_display = fname.replace("_compos_analysis.xlsx", "").replace(".xlsx", "").strip()
+            # Normalize brand name from file name to canonical name
+            normalized_brand = BRAND_NAME_MAPPING.get(brand_display, brand_display)
+            # Only process if it's one of our current brands
+            if normalized_brand not in BRAND_ORDER:
+                continue
             try:
                 try:
                     df_comp = pd.read_excel(path, sheet_name="Raw Data")
@@ -211,7 +226,7 @@ def _load_brand_strength_from_ads_compos():
                 if 'Top Archetype' in df_comp.columns and len(df_comp.dropna(subset=['Top Archetype'])) > 0:
                     vc = df_comp['Top Archetype'].dropna().value_counts()
                     pct = float((vc.max() / vc.sum()) * 100) if vc.sum() > 0 else 0.0
-                    strength[brand_display] = pct
+                    strength[normalized_brand] = pct
             except Exception:
                 pass
     return strength
@@ -242,6 +257,11 @@ def _load_top_archetypes_from_ads_compos():
             if fname.startswith("~$"):
                 continue
             brand_display = fname.replace("_compos_analysis.xlsx", "").replace(".xlsx", "").strip()
+            # Normalize brand name from file name to canonical name
+            normalized_brand = BRAND_NAME_MAPPING.get(brand_display, brand_display)
+            # Only process if it's one of our current brands
+            if normalized_brand not in BRAND_ORDER:
+                continue
             try:
                 try:
                     df_comp = pd.read_excel(path, sheet_name="Raw Data")
@@ -256,7 +276,7 @@ def _load_top_archetypes_from_ads_compos():
                         pct = (count / total) * 100 if total > 0 else 0
                         items.append({'archetype': archetype, 'percentage': pct, 'count': int(count)})
                     if items:
-                        results[brand_display] = items
+                        results[normalized_brand] = items
             except Exception:
                 pass
     return results
@@ -447,7 +467,16 @@ def render():
     st.markdown("### Ad Volume Share (Selected Months)")
     sub_tabs = st.tabs(["Number of Ads", "Reach"])
     with sub_tabs[0]:
-        ad_counts = df_filtered["brand"].value_counts().reset_index()
+        # Normalize brand names before counting
+        if not df_filtered.empty and 'brand' in df_filtered.columns:
+            df_pie_ads = df_filtered.copy()
+            df_pie_ads['brand_normalized'] = df_pie_ads['brand'].apply(
+                lambda b: BRAND_NAME_MAPPING.get(str(b).strip(), str(b).strip())
+            )
+            ad_counts = df_pie_ads["brand_normalized"].value_counts().reset_index()
+        else:
+            ad_counts = pd.DataFrame(columns=["brand", "count"])
+        
         if not ad_counts.empty:
             ad_counts.columns = ["brand", "count"]
 
@@ -470,7 +499,17 @@ def render():
             st.info("No ads in selected months.")
 
     with sub_tabs[1]:
-        reach_totals = df_filtered.groupby("brand", as_index=False)["reach"].sum()
+        # Normalize brand names before grouping
+        if not df_filtered.empty and 'brand' in df_filtered.columns:
+            df_pie_reach = df_filtered.copy()
+            df_pie_reach['brand_normalized'] = df_pie_reach['brand'].apply(
+                lambda b: BRAND_NAME_MAPPING.get(str(b).strip(), str(b).strip())
+            )
+            reach_totals = df_pie_reach.groupby("brand_normalized", as_index=False)["reach"].sum()
+            reach_totals.rename(columns={"brand_normalized": "brand"}, inplace=True)
+        else:
+            reach_totals = pd.DataFrame(columns=["brand", "reach"])
+        
         if not reach_totals.empty:
 
             color_map_reach = {**BRAND_COLORS}
@@ -500,11 +539,24 @@ def render():
     # --- Brand Summary (cards + creativity analysis) ---
     st.markdown("### Brand Summary")
 
-    # Compute 6-month reach totals and ranks using the fixed window
-    reach_6m = df_fixed.groupby('brand')['reach'].sum() if not df_fixed.empty else pd.Series(dtype=float)
+    # Compute reach totals using the selected date range (df_filtered) instead of just the rolling window
+    # This ensures all brands in the selected date range are included
+    # First normalize brand names in df_filtered to ensure consistent matching
+    if not df_filtered.empty and 'brand' in df_filtered.columns:
+        # Normalize brand names to canonical names for consistent matching
+        df_reach_normalized = df_filtered.copy()
+        df_reach_normalized['brand_normalized'] = df_reach_normalized['brand'].apply(
+            lambda b: BRAND_NAME_MAPPING.get(str(b).strip(), str(b).strip())
+        )
+        # Only keep brands that are in our BRAND_ORDER (current brands)
+        df_reach_normalized = df_reach_normalized[df_reach_normalized['brand_normalized'].isin(BRAND_ORDER)].copy()
+        reach_6m = df_reach_normalized.groupby('brand_normalized')['reach'].sum() if not df_reach_normalized.empty else pd.Series(dtype=float)
+    else:
+        reach_6m = pd.Series(dtype=float)
+    
     reach_mean = reach_6m.mean() if len(reach_6m) else 0
     reach_ranks = reach_6m.rank(ascending=False, method="min") if len(reach_6m) else pd.Series(dtype=float)
-    reach_6m_map = reach_6m.to_dict()
+    reach_6m_map = reach_6m.to_dict()  # Now keyed by normalized brand names
     reach_norm_map = {
         _normalize_brand(brand): value
         for brand, value in reach_6m_map.items()
@@ -518,7 +570,7 @@ def render():
     }
 
     # Brand strength from compos files in data/ads/compos, fallback to Agility
-    strength_map = _load_brand_strength_from_summary()
+    strength_map = _load_brand_strength_from_ads_compos()
     if not strength_map:
         strength_map = _compute_brand_strength_from_agility()
     if strength_map:
@@ -533,30 +585,72 @@ def render():
 
     creativity_df = load_creativity_rankings("ads")
     if not creativity_df.empty:
-        creativity_df['rank'] = pd.to_numeric(creativity_df['rank'], errors='coerce')
-        creativity_df['originality_score'] = pd.to_numeric(creativity_df['originality_score'], errors='coerce')
-        cre_mean = creativity_df['originality_score'].mean()
-        denom = cre_mean if cre_mean != 0 else 1
-        creativity_df['delta_vs_mean_pct'] = ((creativity_df['originality_score'] - denom) / denom) * 100
+        # Normalize brand names from creativity file using BRAND_NAME_MAPPING
+        creativity_df = creativity_df.copy()
+        # Store original brand names for debugging/matching
+        creativity_df['brand_original'] = creativity_df['brand'].astype(str).str.strip()
+        
+        # Normalize with case-insensitive matching
+        def normalize_brand_name(brand_str):
+            brand_str = str(brand_str).strip()
+            # Try exact match first
+            if brand_str in BRAND_NAME_MAPPING:
+                return BRAND_NAME_MAPPING[brand_str]
+            # Try case-insensitive match
+            brand_lower = brand_str.lower()
+            if brand_lower in BRAND_NAME_MAPPING:
+                return BRAND_NAME_MAPPING[brand_lower]
+            # Try all variations in mapping (case-insensitive)
+            for key, value in BRAND_NAME_MAPPING.items():
+                if key.lower() == brand_lower:
+                    return value
+            # If no match, return original
+            return brand_str
+        
+        creativity_df['brand_normalized'] = creativity_df['brand_original'].apply(normalize_brand_name)
+        # Only keep brands that are in our BRAND_ORDER (current brands)
+        creativity_df = creativity_df[creativity_df['brand_normalized'].isin(BRAND_ORDER)].copy()
+        if not creativity_df.empty:
+            creativity_df['rank'] = pd.to_numeric(creativity_df['rank'], errors='coerce')
+            creativity_df['originality_score'] = pd.to_numeric(creativity_df['originality_score'], errors='coerce')
+            cre_mean = creativity_df['originality_score'].mean()
+            denom = cre_mean if cre_mean != 0 else 1
+            creativity_df['delta_vs_mean_pct'] = ((creativity_df['originality_score'] - denom) / denom) * 100
+            # Use normalized brand names for consistency
+            creativity_df['brand'] = creativity_df['brand_normalized']
 
     # Build brand tabs from union of brands across sources (ads, compos, creativity)
     ads_brands = set(df_fixed['brand'].dropna().unique())
     compos_brands = set(bs_df['brand'].unique()) if len(bs_df) else set()
-    creativity_brands = set(creativity_df['brand'].dropna().unique()) if not creativity_df.empty else set()
+    creativity_brands = set(creativity_df['brand'].dropna().unique()) if not creativity_df.empty and 'brand' in creativity_df.columns else set()
 
     # Normalize for matching, but display original preferred names: prefer ads brand if available, else compos/creativity name
     norm_to_display = {}
     ads_norm_map = { _normalize_brand(b): b for b in ads_brands }
-    for b in compos_brands.union(ads_brands).union(creativity_brands):
+    all_brands = compos_brands.union(ads_brands).union(creativity_brands)
+    
+    # Filter to only include brands that are in our BRAND_ORDER (current brands)
+    # Normalize brand names and check if they match any of our current brands
+    for b in all_brands:
+        # Normalize the brand name from data
+        normalized_brand = BRAND_NAME_MAPPING.get(b, b)
+        # Only include if it's in our current brands list
+        if normalized_brand not in BRAND_ORDER:
+            continue
+        
         norm = _normalize_brand(b)
         if not norm:
             continue
         if norm in norm_to_display:
             continue
-        preferred = ads_norm_map.get(norm, b)
+        preferred = ads_norm_map.get(norm, normalized_brand)  # Use normalized brand name
         norm_to_display[norm] = preferred
 
-    available_brands = sorted(list(norm_to_display.values()))
+    # Sort by BRAND_ORDER to maintain consistent ordering
+    available_brands = [b for b in BRAND_ORDER if b in norm_to_display.values() or _normalize_brand(b) in norm_to_display]
+    # Add any remaining brands that weren't in BRAND_ORDER
+    remaining = sorted([b for b in norm_to_display.values() if b not in available_brands])
+    available_brands.extend(remaining)
 
     if not available_brands:
         st.info("No brands available to display.")
@@ -605,7 +699,17 @@ def render():
 
                 # Creativity
                 with col3:
-                    cre_row = creativity_df[creativity_df['brand'].astype(str).str.lower() == brand_name.lower()] if not creativity_df.empty else pd.DataFrame()
+                    # Normalize brand_name to match the normalized brand names in creativity_df
+                    brand_name_normalized = BRAND_NAME_MAPPING.get(brand_name.strip(), brand_name.strip())
+                    # Try multiple matching strategies
+                    if not creativity_df.empty:
+                        # First try exact match with normalized name
+                        cre_row = creativity_df[creativity_df['brand'].astype(str).str.strip().str.lower() == brand_name_normalized.lower()]
+                        # If no match, try matching against original brand names too
+                        if cre_row.empty:
+                            cre_row = creativity_df[creativity_df['brand_original'].astype(str).str.strip().str.lower() == brand_name.strip().lower()]
+                    else:
+                        cre_row = pd.DataFrame()
                     if not cre_row.empty:
                         score = cre_row['originality_score'].iloc[0]
                         rank_cre = int(cre_row['rank'].iloc[0]) if pd.notna(cre_row['rank'].iloc[0]) else None
@@ -622,7 +726,13 @@ def render():
 
                 # Creativity Analysis section
                 if not creativity_df.empty:
-                    cre_row = creativity_df[creativity_df['brand'].astype(str).str.lower() == brand_name.lower()]
+                    # Normalize brand_name to match the normalized brand names in creativity_df
+                    brand_name_normalized = BRAND_NAME_MAPPING.get(brand_name.strip(), brand_name.strip())
+                    # Try multiple matching strategies
+                    cre_row = creativity_df[creativity_df['brand'].astype(str).str.strip().str.lower() == brand_name_normalized.lower()]
+                    # If no match, try matching against original brand names too
+                    if cre_row.empty:
+                        cre_row = creativity_df[creativity_df['brand_original'].astype(str).str.strip().str.lower() == brand_name.strip().lower()]
                     if not cre_row.empty:
                         score = cre_row['originality_score'].iloc[0]
                         rank_cre = int(cre_row['rank'].iloc[0]) if pd.notna(cre_row['rank'].iloc[0]) else None
@@ -640,7 +750,7 @@ def render():
 
     # --- Archetype Matrix View ---
     st.markdown("### Archetype Coverage Matrix")
-    archetype_stats = _load_archetype_stats_from_summary()
+    archetype_stats = _load_archetype_stats_from_ads_compos()
     if not archetype_stats:
         archetype_stats = _load_archetype_stats_from_agility()
 
@@ -659,7 +769,12 @@ def render():
     else:
         def _render_archetype_matrix(counts_dict, total_count):
             counts_dict = counts_dict or {}
-            total = total_count if total_count and total_count > 0 else 0
+            # Calculate total only from archetypes that are in ARCHETYPE_DISPLAY_ORDER
+            # This ensures percentages add up to 100%
+            total = sum(int(counts_dict.get(archetype, 0)) for archetype in ARCHETYPE_DISPLAY_ORDER)
+            if total == 0:
+                # Fallback to total_count if no archetypes in display order are present
+                total = total_count if total_count and total_count > 0 else 0
             card_base_style = (
                 "border:1px solid #CDE7D8; border-radius:10px; padding:12px; "
                 "margin-bottom:12px; text-align:center;"
@@ -758,27 +873,52 @@ def render():
     # Promotions Overview by Company
     _render_promotions_overview()
 
-def _load_archetype_stats_from_summary():
-    if not os.path.exists(COMPOS_SUMMARY_PATH):
-        return {}
-    df = pd.read_excel(COMPOS_SUMMARY_PATH)
+def _load_archetype_stats_from_ads_compos():
+    """Load archetype statistics from individual ads compos files."""
     stats = {}
-    for col in df.columns:
-        values = df[col].dropna()
-        counts = values.value_counts()
-        canonical_counts = {}
-        for archetype, count in counts.items():
-            canonical = _canonicalize_archetype(archetype)
-            if not canonical:
-                continue
-            canonical_counts[canonical] = canonical_counts.get(canonical, 0) + int(count)
-        total = int(sum(canonical_counts.values()))
-        if total == 0:
+    if not os.path.isdir(ADS_COMPOS_DIR):
+        return stats
+    for path in glob.glob(os.path.join(ADS_COMPOS_DIR, "*.xlsx")):
+        fname = os.path.basename(path)
+        if fname.startswith("~$") or fname == "compos_summary.xlsx":
             continue
-        stats[col] = {
-            "total": total,
-            "counts": canonical_counts,
-        }
+        brand_display = fname.replace("_compos_analysis.xlsx", "").replace(".xlsx", "").strip()
+        # Normalize brand name from file name to canonical name
+        normalized_brand = BRAND_NAME_MAPPING.get(brand_display, brand_display)
+        # Only process if it's one of our current brands
+        if normalized_brand not in BRAND_ORDER:
+            continue
+        try:
+            try:
+                df_comp = pd.read_excel(path, sheet_name="Raw Data")
+            except Exception:
+                df_comp = pd.read_excel(path)
+            if 'Top Archetype' not in df_comp.columns:
+                continue
+            values = df_comp['Top Archetype'].dropna()
+            if len(values) == 0:
+                continue
+            counts = values.value_counts()
+            canonical_counts = {}
+            for archetype, count in counts.items():
+                archetype_str = str(archetype)
+                # Try direct match first (in case it's already in correct format)
+                if archetype_str in ARCHETYPE_DISPLAY_ORDER:
+                    canonical = archetype_str
+                else:
+                    canonical = _canonicalize_archetype(archetype_str)
+                if not canonical:
+                    continue
+                canonical_counts[canonical] = canonical_counts.get(canonical, 0) + int(count)
+            total = int(sum(canonical_counts.values()))
+            if total == 0:
+                continue
+            stats[normalized_brand] = {
+                "total": total,
+                "counts": canonical_counts,
+            }
+        except Exception:
+            pass
     return stats
 
 

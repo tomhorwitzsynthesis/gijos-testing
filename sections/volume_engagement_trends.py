@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.config import BRAND_NAME_MAPPING, BRAND_COLORS
+from utils.config import BRAND_NAME_MAPPING, BRAND_COLORS, BRANDS
 from utils.date_utils import get_selected_date_range
 from utils.file_io import load_social_data
 
@@ -79,8 +79,25 @@ def render(selected_platforms=None):
 
         any_data_for_platform = False
 
-        for brand_key, brand_display in BRAND_NAME_MAPPING.items():
-            df = load_social_data(brand_key, platform)
+        # Iterate over BRANDS and use mapping to get file name key
+        for brand_display in BRANDS:
+            # Find all possible keys that map to this brand
+            possible_keys = [key for key, value in BRAND_NAME_MAPPING.items() if value == brand_display]
+            # Prefer keys that are lowercase/hyphenated (these are more likely to be in the data file)
+            # Sort by: 1) keys with hyphens first, 2) lowercase keys, 3) others
+            possible_keys.sort(key=lambda k: (("-" not in k.lower(), k != k.lower(), k)))
+            
+            # Try each key until we find one that returns data
+            df = None
+            for brand_key in possible_keys:
+                df = load_social_data(brand_key, platform)
+                if df is not None and not df.empty:
+                    break
+            
+            # If no key worked, try the fallback
+            if df is None or df.empty:
+                brand_key = brand_display.lower().replace(" ", "-")
+                df = load_social_data(brand_key, platform)
             if df is None or df.empty or "Published Date" not in df.columns:
                 continue
 

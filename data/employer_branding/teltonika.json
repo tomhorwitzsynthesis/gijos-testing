@@ -1,0 +1,46 @@
+{
+    "company": "Teltonika",
+    "themes": {
+      "value_proposition": {
+        "tags": [
+          "Global IoT producer",
+          "High-tech manufacturing",
+          "Rapid growth environment"
+        ],
+        "summary": "Positions itself as a fast-growing global IoT group with end-to-end capabilities—from prototyping to mass production—offering stable Lithuanian-made products, modern factories and an environment oriented toward high technology and scale."
+      },
+      "purpose_impact": {
+        "tags": [
+          "IoT world creation",
+          "Global connectivity",
+          "Tech innovation"
+        ],
+        "summary": "Frames its purpose as enabling the creation of the global IoT world, providing devices and solutions that improve connectivity and digitalisation internationally; impact is described mostly in technological and global business terms rather than societal or environmental narratives."
+      },
+      "target_talent_profile": {
+        "tags": [
+          "Manufacturing workforce",
+          "Engineering & quality",
+          "International sales"
+        ],
+        "summary": "Targets a broad but clearly defined set of profiles: manufacturing and assembly workers, robotics operators, electronics quality leaders, and globally oriented B2B sales managers; little to no reference to student programs or early-career tracks, with emphasis on experience and readiness for high-intensity production or sales environments."
+      },
+      "company_culture": {
+        "tags": [
+          "High pace & discipline",
+          "Performance focus",
+          "On-site teamwork"
+        ],
+        "summary": "Communicates a fast-paced, structured, performance-driven culture centred on productivity, clear procedures, responsibility and on-site execution; culture cues appear more operational and process-oriented than value- or people-narrative driven, with limited references to flexibility or softer cultural elements."
+      },
+      "learning_possibilities": {
+        "tags": [
+          "Technical upskilling",
+          "Process trainings",
+          "Role-specific development"
+        ],
+        "summary": "Mentions training necessary for specific roles (manufacturing processes, robotics, quality systems, product knowledge), focusing on practical, technical learning tied to production tasks or sales competencies; does not describe broader career pathways, structured internal mobility or formal continuous-learning programs."
+      }
+    }
+  }
+  

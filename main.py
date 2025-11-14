@@ -12,7 +12,7 @@ from utils.date_utils import init_month_selector
 # --- Section Imports ---
 from sections.compos_matrix import render as render_matrix
 from sections.sentiment_analysis import render as render_sentiment
-from sections.topical_analysis import render as render_topics
+from sections.topical_analysis_backlog import render as render_topics
 from sections.volume_trends import render as render_volume
 from sections.media_coverage import render as render_media_shares
 from sections.pr_metrics import render as render_pr_metrics

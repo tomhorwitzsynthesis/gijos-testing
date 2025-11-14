@@ -11,127 +11,11 @@ BRAND_ORDER = list(BRAND_COLORS.keys())
 
 
 @st.cache_data(ttl=0)
-def _load_employer_branding_themes_data():
-    """Load employer branding themes data from employer_branding_posts.xlsx and return dict of company -> list of top 5 themes with percentages and examples."""
+def _load_all_employer_branding_data():
+    """Load employer branding data once and compute all needed structures in a single pass."""
     path = os.path.join(DATA_ROOT, "social_media", "employer_branding", "employer_branding_posts.xlsx")
     if not os.path.exists(path):
-        return {}
-    
-    try:
-        df = pd.read_excel(path)
-        
-        # Check for required columns - try different possible column names for company
-        company_col = None
-        for col in ['user_id', 'pageName', 'company', 'brand']:
-            if col in df.columns:
-                company_col = col
-                break
-        
-        if company_col is None or 'theme_1' not in df.columns or 'post_text' not in df.columns:
-            return {}
-        
-        # Filter out rows with missing theme_1 (at least one theme should exist)
-        df = df[df['theme_1'].notna()].copy()
-        
-        if df.empty:
-            return {}
-        
-        # Track used post texts to ensure no duplicates across all companies
-        used_post_texts = set()
-        
-        # Group by company and count all themes (from theme_1, theme_2, theme_3)
-        themes_by_company = {}
-        
-        for company in df[company_col].unique():
-            if pd.isna(company):
-                continue
-            
-            company_df = df[df[company_col] == company]
-            
-            # Collect all themes from theme_1, theme_2, theme_3
-            all_themes = []
-            for col in ['theme_1', 'theme_2', 'theme_3']:
-                if col in company_df.columns:
-                    themes = company_df[col].dropna().tolist()
-                    all_themes.extend(themes)
-            
-            if not all_themes:
-                continue
-            
-            # Count theme occurrences
-            theme_counts = Counter(all_themes)
-            total = len(all_themes)
-            
-            # Normalize company name using BRAND_NAME_MAPPING
-            company_normalized = BRAND_NAME_MAPPING.get(str(company), str(company))
-            
-            # Calculate percentages and get top 5
-            top_5 = []
-            for theme, count in theme_counts.most_common(5):
-                percentage = (count / total) * 100 if total > 0 else 0
-                
-                # Get 2 unique examples for this theme
-                examples = []
-                # Check all theme columns to find posts with this theme
-                for theme_col in ['theme_1', 'theme_2', 'theme_3']:
-                    if theme_col not in company_df.columns:
-                        continue
-                    theme_df = company_df[company_df[theme_col] == theme]
-                    # Filter out rows with missing post_text
-                    theme_df = theme_df[theme_df['post_text'].notna()].copy()
-                    
-                    for _, row in theme_df.iterrows():
-                        if len(examples) >= 2:
-                            break
-                        
-                        post_text = str(row['post_text']).strip()
-                        if not post_text or post_text == 'nan':
-                            continue
-                        
-                        # Check if this exact text has been used before
-                        if post_text not in used_post_texts:
-                            # Truncate to 150 characters (longer than before)
-                            if len(post_text) > 150:
-                                post_text_display = post_text[:150] + "..."
-                            else:
-                                post_text_display = post_text
-                            
-                            # Get URL if available
-                            post_url = None
-                            if 'url' in row and pd.notna(row['url']):
-                                post_url = str(row['url']).strip()
-                            
-                            examples.append({
-                                'text': post_text_display,
-                                'url': post_url
-                            })
-                            used_post_texts.add(post_text)
-                    
-                    if len(examples) >= 2:
-                        break
-                
-                top_5.append({
-                    'theme': str(theme),
-                    'percentage': percentage,
-                    'count': int(count),
-                    'examples': examples
-                })
-            
-            if top_5:
-                themes_by_company[company_normalized] = top_5
-        
-        return themes_by_company
-    except Exception as e:
-        st.error(f"Error loading employer branding themes data: {e}")
-        return {}
-
-
-@st.cache_data(ttl=0)
-def _load_theme_distribution_data():
-    """Load employer branding themes data and return dict of theme -> list of (company, count) tuples."""
-    path = os.path.join(DATA_ROOT, "social_media", "employer_branding", "employer_branding_posts.xlsx")
-    if not os.path.exists(path):
-        return {}
+        return {}, {}, pd.DataFrame()
     
     try:
         df = pd.read_excel(path)
@@ -144,56 +28,132 @@ def _load_theme_distribution_data():
                 break
         
         if company_col is None or 'theme_1' not in df.columns:
-            return {}
+            return {}, {}, pd.DataFrame()
         
         # Filter out rows with missing theme_1 (at least one theme should exist)
         df = df[df['theme_1'].notna()].copy()
         
         if df.empty:
-            return {}
+            return {}, {}, pd.DataFrame()
         
-        # Get all unique themes
-        all_themes = set()
-        for col in ['theme_1', 'theme_2', 'theme_3']:
-            if col in df.columns:
-                themes = df[col].dropna().unique().tolist()
-                all_themes.update(themes)
+        # Initialize data structures
+        company_theme_pairs = []  # For company-theme counts DataFrame
+        theme_company_counts = {}  # For theme -> company counts (theme_distribution)
+        company_theme_examples = {}  # For storing examples by company and theme
         
-        # For each theme, count posts per company (checking all 3 theme columns)
-        theme_distribution = {}
-        
-        for theme in all_themes:
-            if pd.isna(theme):
+        # Process each row once - single pass
+        for _, row in df.iterrows():
+            company = row[company_col]
+            if pd.isna(company):
                 continue
             
-            company_counts = Counter()
+            company_normalized = BRAND_NAME_MAPPING.get(str(company), str(company))
+            post_text = str(row.get('post_text', '')).strip() if 'post_text' in row and pd.notna(row.get('post_text')) else None
+            post_url = str(row.get('url', '')).strip() if 'url' in row and pd.notna(row.get('url')) else None
             
-            # Check each row to see if this theme appears in any of the theme columns
-            for _, row in df.iterrows():
-                company = row[company_col]
-                if pd.isna(company):
+            # Process all theme columns
+            for theme_col in ['theme_1', 'theme_2', 'theme_3']:
+                if theme_col not in df.columns:
+                    continue
+                if pd.isna(row[theme_col]):
                     continue
                 
-                # Check if this theme appears in theme_1, theme_2, or theme_3
-                theme_found = False
-                for theme_col in ['theme_1', 'theme_2', 'theme_3']:
-                    if theme_col in df.columns:
-                        if pd.notna(row[theme_col]) and str(row[theme_col]).strip() == str(theme).strip():
-                            theme_found = True
-                            break
+                theme = str(row[theme_col]).strip()
+                if not theme or theme == 'nan':
+                    continue
                 
-                if theme_found:
-                    # Normalize company name using BRAND_NAME_MAPPING
-                    company_normalized = BRAND_NAME_MAPPING.get(str(company), str(company))
-                    company_counts[company_normalized] += 1
-            
-            if company_counts:
-                theme_distribution[str(theme)] = dict(company_counts)
+                # Add to company-theme pairs for DataFrame
+                company_theme_pairs.append({
+                    'Company': company_normalized,
+                    'Theme': theme
+                })
+                
+                # Update theme distribution
+                if theme not in theme_company_counts:
+                    theme_company_counts[theme] = Counter()
+                theme_company_counts[theme][company_normalized] += 1
+                
+                # Store examples if post_text is available
+                if post_text and 'post_text' in df.columns:
+                    key = (company_normalized, theme)
+                    if key not in company_theme_examples:
+                        company_theme_examples[key] = []
+                    if len(company_theme_examples[key]) < 2:
+                        company_theme_examples[key].append({
+                            'text': post_text[:150] + "..." if len(post_text) > 150 else post_text,
+                            'url': post_url
+                        })
         
-        return theme_distribution
+        # Convert theme_company_counts to dict format
+        theme_distribution_dict = {theme: dict(counts) for theme, counts in theme_company_counts.items()}
+        
+        # Create counts DataFrame
+        if company_theme_pairs:
+            data_df = pd.DataFrame(company_theme_pairs)
+            counts_df = data_df.groupby(['Company', 'Theme']).size().reset_index(name='Count')
+        else:
+            counts_df = pd.DataFrame()
+        
+        # Build themes_by_company with top 5 and examples
+        themes_by_company = {}
+        used_post_texts = set()  # Track used examples globally
+        
+        # Group by company
+        for company_normalized in set(pair['Company'] for pair in company_theme_pairs):
+            # Get all themes for this company
+            company_themes = [p['Theme'] for p in company_theme_pairs if p['Company'] == company_normalized]
+            if not company_themes:
+                continue
+            
+            # Count theme occurrences
+            theme_counts = Counter(company_themes)
+            total = len(company_themes)
+            
+            # Get top 5 themes
+            top_5 = []
+            for theme, count in theme_counts.most_common(5):
+                percentage = (count / total) * 100 if total > 0 else 0
+                
+                # Get examples from stored examples
+                examples = []
+                key = (company_normalized, theme)
+                if key in company_theme_examples:
+                    for ex in company_theme_examples[key]:
+                        ex_text = ex['text'].replace('...', '').strip()
+                        if ex_text not in used_post_texts:
+                            examples.append(ex)
+                            used_post_texts.add(ex_text)
+                            if len(examples) >= 2:
+                                break
+                
+                top_5.append({
+                    'theme': str(theme),
+                    'percentage': percentage,
+                    'count': int(count),
+                    'examples': examples
+                })
+            
+            if top_5:
+                themes_by_company[company_normalized] = top_5
+        
+        return themes_by_company, theme_distribution_dict, counts_df
     except Exception as e:
-        st.error(f"Error loading theme distribution data: {e}")
-        return {}
+        st.error(f"Error loading employer branding data: {e}")
+        return {}, {}, pd.DataFrame()
+
+
+@st.cache_data(ttl=0)
+def _load_employer_branding_themes_data():
+    """Load employer branding themes data - uses optimized shared loader."""
+    themes_data, _, _ = _load_all_employer_branding_data()
+    return themes_data
+
+
+@st.cache_data(ttl=0)
+def _load_theme_distribution_data():
+    """Load theme distribution data - uses optimized shared loader."""
+    _, theme_distribution, _ = _load_all_employer_branding_data()
+    return theme_distribution
 
 
 def _render_theme_distribution_charts():
@@ -271,62 +231,9 @@ def _render_theme_distribution_charts():
 
 @st.cache_data(ttl=0)
 def _load_company_theme_counts():
-    """Load employer branding themes data and return DataFrame with company, theme, and count."""
-    path = os.path.join(DATA_ROOT, "social_media", "employer_branding", "employer_branding_posts.xlsx")
-    if not os.path.exists(path):
-        return pd.DataFrame()
-    
-    try:
-        df = pd.read_excel(path)
-        
-        # Check for required columns - try different possible column names for company
-        company_col = None
-        for col in ['user_id', 'pageName', 'company', 'brand']:
-            if col in df.columns:
-                company_col = col
-                break
-        
-        if company_col is None or 'theme_1' not in df.columns:
-            return pd.DataFrame()
-        
-        # Filter out rows with missing theme_1 (at least one theme should exist)
-        df = df[df['theme_1'].notna()].copy()
-        
-        if df.empty:
-            return pd.DataFrame()
-        
-        # Collect all data: company, theme pairs
-        data_rows = []
-        
-        for _, row in df.iterrows():
-            company = row[company_col]
-            if pd.isna(company):
-                continue
-            
-            # Normalize company name
-            company_normalized = BRAND_NAME_MAPPING.get(str(company), str(company))
-            
-            # Check all theme columns
-            for theme_col in ['theme_1', 'theme_2', 'theme_3']:
-                if theme_col in df.columns and pd.notna(row[theme_col]):
-                    theme = str(row[theme_col]).strip()
-                    if theme and theme != 'nan':
-                        data_rows.append({
-                            'Company': company_normalized,
-                            'Theme': theme
-                        })
-        
-        if not data_rows:
-            return pd.DataFrame()
-        
-        # Create DataFrame and count occurrences
-        data_df = pd.DataFrame(data_rows)
-        counts_df = data_df.groupby(['Company', 'Theme']).size().reset_index(name='Count')
-        
-        return counts_df
-    except Exception as e:
-        st.error(f"Error loading company theme counts: {e}")
-        return pd.DataFrame()
+    """Load company theme counts - uses optimized shared loader."""
+    _, _, counts_df = _load_all_employer_branding_data()
+    return counts_df
 
 
 def _render_company_theme_stacked_bar():
@@ -397,19 +304,6 @@ def _render_company_theme_stacked_bar():
     )
     
     st.plotly_chart(fig, use_container_width=True)
-    
-    # Show summary table
-    st.markdown("#### Summary Table")
-    summary_df = pivot_df.copy()
-    summary_df['Total Posts'] = summary_df.sum(axis=1)
-    # Calculate percentages for each theme
-    for theme in all_themes:
-        summary_df[f'{theme} %'] = (summary_df[theme] / summary_df['Total Posts'] * 100).round(1)
-    
-    # Reorder columns: Total, then themes with counts, then themes with percentages
-    display_cols = ['Total Posts'] + all_themes + [f'{t} %' for t in all_themes]
-    summary_df = summary_df[display_cols]
-    st.dataframe(summary_df, use_container_width=True)
 
 
 def render():

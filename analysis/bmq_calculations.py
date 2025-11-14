@@ -9,9 +9,33 @@ import requests
 # CONFIGURATION (EDIT THESE)
 # ============================================================
 
-DATA_FOLDER = "../data/agility"                # folder where files are stored
-FILES = ["file1.csv", "file2.xlsx"] # filenames inside DATA_FOLDER
-BRANDS = ["nike", "adidas"]         # brand per file, same order
+# Path relative to script location
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FOLDER = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "data", "agility"))  # folder where files are stored
+FILES = [
+    "epso-g_agility.xlsx",
+    "exergi_agility.xlsx",
+    "helen_agility.xlsx",
+    "hofor_agility.xlsx",
+    "ignitis_agility.xlsx",
+    "kauno-energija_agility.xlsx",
+    "ltg_agility.xlsx",
+    "ltou_agility.xlsx",
+    "teltonika_agility.xlsx",
+    "via-lietuva_agility.xlsx"
+]  # filenames inside DATA_FOLDER
+BRANDS = [
+    "epso",
+    "exergi",
+    "helen",
+    "hofor",
+    "ignitis",
+    "energi",
+    "ltg",
+    "ltou",
+    "teltonika",
+    "lietuva"
+]  # brand per file, same order
 SHEET = "Raw Data"                    # sheet name for Excel files
 
 # ============================================================
@@ -22,7 +46,17 @@ def load_file(path, sheet):
     if path.endswith(".csv"):
         return pd.read_csv(path)
     if path.endswith(".xlsx"):
-        return pd.read_excel(path, sheet_name=sheet)
+        try:
+            return pd.read_excel(path, sheet_name=sheet)
+        except Exception as e:
+            print(f"    ⚠ Error reading Excel file: {e}")
+            print(f"    Available sheets (if any):")
+            try:
+                xl_file = pd.ExcelFile(path)
+                print(f"      {xl_file.sheet_names}")
+            except:
+                pass
+            raise
     raise ValueError(f"Unsupported file format: {path}")
 
 
@@ -31,8 +65,8 @@ def count_query_occurrences(df, query):
     q = query.lower()
     for _, row in df.iterrows():
         c = 0
-        if pd.notna(row.get("Title")):
-            c += row["Title"].lower().count(q)
+        if pd.notna(row.get("Headline")):
+            c += row["Headline"].lower().count(q)
         if pd.notna(row.get("Maintext")):
             c += row["Maintext"].lower().count(q)
         occurrences.append(c)
@@ -62,7 +96,7 @@ def check_text_presence_200(df, brand):
 
 
 def check_title(df, brand):
-    df["term_in_title"] = df["Title"].str.contains(brand, case=False, na=False)
+    df["term_in_title"] = df["Headline"].str.contains(brand, case=False, na=False)
     return df
 
 
@@ -132,40 +166,57 @@ def assign_quality_score(df):
 
 def process_file(df, brand):
     df = df.copy()
+    print(f"    Starting process_file for {len(df)} rows...")
 
     # --- Query occurrences ---
+    print(f"    Counting query occurrences for '{brand}'...")
     if "," in brand:
         p, s = [x.strip() for x in brand.split(",")]
         df["query_occurrences"] = count_query_occurrences(df, p) + count_query_occurrences(df, s)
+        print(f"    Using multi-term search: '{p}' + '{s}'")
     else:
         df["query_occurrences"] = count_query_occurrences(df, brand)
+    print(f"    Query occurrences range: {df['query_occurrences'].min()} - {df['query_occurrences'].max()}")
 
     # --- Term checks ---
+    print(f"    Checking term presence in text (100, 200 words) and title...")
     df = check_text_presence_100(df, brand)
     df = check_text_presence_200(df, brand)
     df = check_title(df, brand)
+    print(f"    Term in title: {df['term_in_title'].sum()} rows")
+    print(f"    Term in first 100 words: {df['term_in_truncated_maintext_100'].sum()} rows")
+    print(f"    Term in first 200 words: {df['term_in_truncated_maintext_200'].sum()} rows")
 
     df["Quality"] = "A"
     df = df.reset_index(drop=True)
 
     # --- PageRank ---
+    print(f"    Fetching PageRank for {len(df)} URLs (this may take a while)...")
     api_key = "wsc0sskwcow88448sswc88kg0okwc40so4k48cgk"
     ranks = []
-    for link in df["Link"]:
-        pr = get_page_rank(truncate_link(link), api_key)
+    for i, link in enumerate(df["URL"], 1):
+        if i % 10 == 0 or i == 1:
+            print(f"      Progress: {i}/{len(df)} URLs processed...", end='\r')
+        domain = truncate_link(link)
+        pr = get_page_rank(domain, api_key)
         r = pr.get("rank") if pr else None
         ranks.append(int(r) if r is not None else 10_000_000_000)
+    print(f"    ✓ PageRank complete: {len(ranks)} ranks fetched")
     df["Rank"] = ranks
 
     # --- Log Rank ---
+    print(f"    Calculating Log_Rank...")
     df["Log_Rank"] = [calculate_log_score(i) / 100 for i in df.index]
     if not df.empty:
         df.at[0, "Log_Rank"] += 1
 
     df = assign_quality_score(df)
+    print(f"    Quality scores assigned: {df['Quality_Score'].value_counts().to_dict()}")
 
     # --- BMQ Calculation for A Only ---
     df_A = df[df["Quality"] == "A"].copy()
+    print(f"    Filtering Quality='A': {len(df_A)} rows remaining")
+    print(f"    Calculating BMQ scores...")
     BMQ = []
     for idx in df_A.index:
         P = df_A.at[idx, "Rank"]
@@ -174,6 +225,7 @@ def process_file(df, brand):
         Q = df_A.at[idx, "Quality_Score"]
         BMQ.append(calculate_article_score(P, R, n, Q))
     df_A["BMQ"] = BMQ
+    print(f"    BMQ range: {min(BMQ):.4f} - {max(BMQ):.4f}")
 
     return df_A
 
@@ -183,30 +235,77 @@ def process_file(df, brand):
 # ============================================================
 
 def main():
+    print("=" * 60)
+    print("BMQ Calculations - Starting Processing")
+    print("=" * 60)
+    print(f"Data folder: {DATA_FOLDER}")
+    print(f"Number of files to process: {len(FILES)}")
+    print(f"Sheet name: {SHEET}")
+    print()
+    
     if len(FILES) != len(BRANDS):
         raise ValueError("FILES and BRANDS must have the same length.")
 
-    results = []
+    results = []  # Store tuples of (filename, processed_df)
 
-    for filename, brand in zip(FILES, BRANDS):
+    for idx, (filename, brand) in enumerate(zip(FILES, BRANDS), 1):
+        print(f"\n[{idx}/{len(FILES)}] Processing: {filename} (Brand: {brand})")
         path = os.path.join(DATA_FOLDER, filename)
+        print(f"  Full path: {path}")
+        
         if not os.path.exists(path):
-            print(f"File not found: {path}")
+            print(f"  ❌ File not found: {path}")
+            continue
+        
+        print(f"  ✓ File found, loading...")
+        try:
+            df = load_file(path, SHEET)
+            print(f"  ✓ Loaded {len(df)} rows, {len(df.columns)} columns")
+            print(f"  Columns: {list(df.columns)[:10]}...")  # Show first 10 columns
+        except Exception as e:
+            print(f"  ❌ Error loading file: {e}")
+            continue
+        
+        print(f"  Processing data for brand '{brand}'...")
+        try:
+            processed = process_file(df, brand)
+            print(f"  ✓ Processed: {len(processed)} rows after filtering (Quality='A')")
+            results.append((filename, processed))
+        except Exception as e:
+            print(f"  ❌ Error processing file: {e}")
+            import traceback
+            traceback.print_exc()
             continue
 
-        df = load_file(path, SHEET)
-        processed = process_file(df, brand)
-        results.append(processed)
-
+    print("\n" + "=" * 60)
     if not results:
-        print("No data processed.")
+        print("❌ No data processed.")
         return
 
-    final_df = pd.concat(results, ignore_index=True)
-    print("Processing complete.")
-    print(final_df.head())
-
-    final_df.to_excel("processed_output.xlsx", index=False)
+    # Save each processed file back to its original location (overwriting completely)
+    print(f"Saving processed data back to original files (overwriting)...")
+    processed_files = []
+    
+    for filename, processed_df in results:
+        path = os.path.join(DATA_FOLDER, filename)
+        
+        print(f"\nSaving: {filename}")
+        try:
+            # Overwrite the entire file with processed data
+            processed_df.to_excel(path, index=False)
+            print(f"  ✓ Overwritten: {len(processed_df)} rows saved")
+            processed_files.append(filename)
+        except Exception as e:
+            print(f"  ❌ Error saving {filename}: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    print("\n" + "=" * 60)
+    print(f"✓ Successfully saved {len(processed_files)} files:")
+    for f in processed_files:
+        print(f"  - {f}")
+    print("=" * 60)
+    print("Processing complete!")
 
 
 if __name__ == "__main__":

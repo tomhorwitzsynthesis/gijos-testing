@@ -15,7 +15,55 @@ def render(mode: str = "by_company"):
         st.error(f"Invalid mode '{mode}' in sentiment_analysis.render(). Use 'by_company' or 'combined'.")
         return
 
-    st.subheader("📊 Sentiment Distribution")
+    # Title with info icon tooltip
+    st.markdown("""
+    <style>
+        .info-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #2FB375;
+            color: white;
+            text-align: center;
+            line-height: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 8px;
+            vertical-align: middle;
+            position: relative;
+        }
+        .info-icon:hover::after {
+            content: "Percentages may not add up to 100% due to rounding.";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            font-size: 12px;
+            margin-bottom: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .info-icon:hover::before {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #333;
+            margin-bottom: 2px;
+            z-index: 1001;
+        }
+    </style>
+    <h3>📊 Sentiment Distribution<span class="info-icon" title="Percentages may not add up to 100% due to rounding.">i</span></h3>
+    """, unsafe_allow_html=True)
 
     start_date, end_date = get_selected_date_range()
 
@@ -37,10 +85,11 @@ def render(mode: str = "by_company"):
 
             all_dfs.append(df)
             sentiment_counts = df["Sentiment"].value_counts(normalize=True) * 100
+            # Round percentages to whole numbers
             sentiment_summary[f"{brand} ({len(df)})"] = {
-                "Positive": sentiment_counts.get("Positive", 0),
-                "Neutral": sentiment_counts.get("Neutral", 0),
-                "Negative": sentiment_counts.get("Negative", 0)
+                "Positive": round(sentiment_counts.get("Positive", 0)),
+                "Neutral": round(sentiment_counts.get("Neutral", 0)),
+                "Negative": round(sentiment_counts.get("Negative", 0))
             }
 
         if not sentiment_summary:
@@ -51,10 +100,11 @@ def render(mode: str = "by_company"):
         if all_dfs:
             df_all = pd.concat(all_dfs, ignore_index=True)
             sentiment_counts = df_all["Sentiment"].value_counts(normalize=True) * 100
+            # Round percentages to whole numbers
             sentiment_summary[f"All Brands ({len(df_all)})"] = {
-                "Positive": sentiment_counts.get("Positive", 0),
-                "Neutral": sentiment_counts.get("Neutral", 0),
-                "Negative": sentiment_counts.get("Negative", 0)
+                "Positive": round(sentiment_counts.get("Positive", 0)),
+                "Neutral": round(sentiment_counts.get("Neutral", 0)),
+                "Negative": round(sentiment_counts.get("Negative", 0))
             }
 
         df_sent = pd.DataFrame.from_dict(sentiment_summary, orient="index").reset_index()
@@ -87,30 +137,40 @@ def render(mode: str = "by_company"):
             "Company": ["All Brands"] * 3,
             "Sentiment": ["Positive", "Neutral", "Negative"],
             "Percentage": [
-                sentiment_counts.get("Positive", 0),
-                sentiment_counts.get("Neutral", 0),
-                sentiment_counts.get("Negative", 0)
+                round(sentiment_counts.get("Positive", 0)),
+                round(sentiment_counts.get("Neutral", 0)),
+                round(sentiment_counts.get("Negative", 0))
             ]
         })
 
-    # Plot
+    # Plot with softer colors matching archetype matrix style
+    # Create text array that hides percentages for small values (< 8%)
+    df_sent['Text'] = df_sent.apply(
+        lambda row: f"{int(row['Percentage'])}%" if row['Percentage'] >= 8 else '',
+        axis=1
+    )
+    
     fig = px.bar(
         df_sent,
         x="Company",
         y="Percentage",
         color="Sentiment",
-        text="Percentage",
+        text="Text",
         barmode="stack",
         color_discrete_map={
-            "Positive": "green",
-            "Neutral": "grey",
-            "Negative": "red"
+            "Positive": "#1FD081",  # Brighter green matching archetype matrix dots
+            "Neutral": "#A0A0A0",  # Lighter grey (less black)
+            "Negative": "#D9777F"  # Softer coral/muted red
         },
-        title="Sentiment Distribution"
+        title=""  # Title removed since it's now in the subheader
     )
-    fig.update_traces(texttemplate='%{text:.1f}%', textposition='inside')
-    fig.update_layout(xaxis_title="Company", yaxis_title="Percentage")
-
+    fig.update_traces(texttemplate='%{text}', textposition='inside')
+    fig.update_layout(
+        xaxis_title="Company (number of articles)",
+        yaxis_title="Percentage",
+        hovermode="x unified"
+    )
+    
     st.plotly_chart(fig, use_container_width=True)
 
     # --- Added: Negative sentiment article topics for Artea (no article numbers) ---

@@ -1,10 +1,49 @@
 import streamlit as st
 import pandas as pd
+import html
 from utils.config import BRAND_NAME_MAPPING, BRANDS
 from utils.date_utils import get_selected_date_range
 from utils.file_io import load_social_data
 
 POST_TEXT_COLUMNS = ["Post", "post_text", "content"]
+
+
+def _render_post_cards(posts_df: pd.DataFrame):
+    """Render stacked cards for top posts."""
+    if posts_df.empty:
+        st.info("No posts to display.")
+        return
+
+    for _, row in posts_df.iterrows():
+        engagement = int(row.get("Engagement", 0))
+        company = html.escape(str(row.get("Company", "")))
+        date = html.escape(str(row.get("Date", "")))
+        post_preview = html.escape(str(row.get("PostPreview", "")))
+        url = row.get("URL")
+        if url:
+            post_html = f'<a href="{html.escape(str(url))}" target="_blank" style="color:#2FB375; text-decoration:none;">"{post_preview}"</a>'
+        else:
+            post_html = f'"{post_preview}"'
+
+        card_html = (
+            f'<div style="border:1px solid #ddd; border-radius:12px; padding:18px; margin-bottom:16px; '
+            f'background-color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.06);">'
+            f'<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">'
+            f'<div><p style="margin:0; font-size:0.9em; color:#6B7280;">Company</p>'
+            f'<h5 style="margin:4px 0; color:#111827;">{company}</h5>'
+            f'<p style="margin:0; font-size:0.9em; color:#6B7280;">Date</p>'
+            f'<p style="margin:4px 0 0; color:#111827;">{date}</p></div>'
+            f'<div style="text-align:right;">'
+            f'<p style="margin:0; font-size:0.9em; color:#6B7280;">Engagement</p>'
+            f'<p style="margin:4px 0; font-size:1.8em; color:#2FB375; font-weight:700;">{engagement:,}</p>'
+            f'</div>'
+            f'</div>'
+            f'<div style="margin-top:12px;">'
+            f'<p style="margin:0; font-size:0.95em; color:#374151;">{post_html}</p>'
+            f'</div>'
+            f'</div>'
+        )
+        st.markdown(card_html, unsafe_allow_html=True)
 
 def render(selected_platforms=None):
     if selected_platforms is None:
@@ -68,13 +107,15 @@ def render(selected_platforms=None):
                 continue
 
             for _, row in df.iterrows():
-                preview = str(row[post_col])[:30].replace("\n", " ").strip()
+                full_text = str(row[post_col]).strip()
+                preview = full_text.replace("\n", " ")
+                preview = preview[:180] + "..." if len(preview) > 180 else preview
                 url = row[url_col]
-                link = f"[{preview}...]({url})"
                 all_posts.append({
                     "Company": brand_display,
                     "Date": row["Published Date"].strftime('%Y-%m-%d'),
-                    "Post": link,
+                    "PostPreview": preview,
+                    "URL": url,
                     "Engagement": int(row["Engagement"])
                 })
 
@@ -91,7 +132,7 @@ def render(selected_platforms=None):
 
         with tabs[0]:
             st.markdown("**Top 5 posts overall**")
-            st.markdown(df_all.head(5).to_markdown(index=False), unsafe_allow_html=True)
+            _render_post_cards(df_all.head(5))
 
         for i, brand_display in enumerate(brand_display_names, start=1):
             with tabs[i]:
@@ -100,5 +141,5 @@ def render(selected_platforms=None):
                     st.info(f"No posts for {brand_display}.")
                 else:
                     st.markdown(f"**Top posts for {brand_display}**")
-                    st.markdown(brand_df.head(5).to_markdown(index=False), unsafe_allow_html=True)
+                    _render_post_cards(brand_df.head(5))
 

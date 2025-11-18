@@ -7,3 +7,5 @@ openai>=1.0.0  # For OpenAI API
 python-dotenv>=1.0.0  # For loading .env file
 streamlit-openai>=0.1.0  # For chat interface with OpenAI
 tabulate
+matplotlib>=3.8.0
+wordcloud>=1.9.3

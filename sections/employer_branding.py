@@ -382,7 +382,7 @@ def _render_comparison_tab(comparison_data):
                         escaped_tag = html.escape(str(tag))
                         st.markdown(
                             f"""
-                            <div style="background-color:#2FB375; color:white; padding:12px 16px; border-radius:20px; text-align:center; font-weight:500; font-size:0.9em; margin-bottom:15px;">
+                            <div style="border:2px solid #2FB375; background-color:#FFFFFF; color:#2FB375; padding:12px 16px; border-radius:20px; text-align:center; font-weight:500; font-size:0.9em; margin-bottom:15px;">
                                 {escaped_tag}
                             </div>
                             """,
@@ -414,7 +414,7 @@ def _render_comparison_tab(comparison_data):
                         escaped_tag = html.escape(str(tag))
                         st.markdown(
                             f"""
-                            <div style="background-color:#FFA726; color:white; padding:12px 16px; border-radius:20px; text-align:center; font-weight:500; font-size:0.9em; margin-bottom:15px;">
+                            <div style="border:2px solid #000000; background-color:#FFFFFF; color:#000000; padding:12px 16px; border-radius:20px; text-align:center; font-weight:500; font-size:0.9em; margin-bottom:15px;">
                                 {escaped_tag}
                             </div>
                             """,
@@ -426,7 +426,7 @@ def _render_comparison_tab(comparison_data):
                 escaped_summary = html.escape(str(diff_summary))
                 st.markdown(
                     f"""
-                    <div style="background-color:#FFF3E0; padding:15px; border-radius:10px; border-left:4px solid #FFA726; margin-bottom:25px;">
+                    <div style="background-color:#f9f9f9; padding:15px; border-radius:10px; border-left:4px solid #000000; margin-bottom:25px;">
                         <p style="margin:0; color:#333; line-height:1.6; font-size:0.95em;">{escaped_summary}</p>
                     </div>
                     """,
@@ -484,19 +484,6 @@ def render():
             
             st.subheader(f"{company} Employer Branding")
             
-            # Display archetype matrix at the top
-            archetype_stats = _load_employer_branding_archetypes()
-            company_archetype_data = archetype_stats.get(company)
-            
-            if company_archetype_data:
-                st.markdown("#### Archetype Distribution (Employer Branding Posts Only)")
-                _render_archetype_matrix(
-                    company_archetype_data.get("counts", {}),
-                    company_archetype_data.get("total", 0),
-                    "posts"
-                )
-                st.markdown("---")
-            
             # Display each theme
             for theme_key, theme_data in themes.items():
                 if not isinstance(theme_data, dict):
@@ -521,7 +508,7 @@ def render():
                             escaped_tag = html.escape(str(tag))
                             st.markdown(
                                 f"""
-                                <div style="background-color:#2FB375; color:white; padding:12px 16px; border-radius:20px; text-align:center; font-weight:500; font-size:0.9em; margin-bottom:15px;">
+                                <div style="border:2px solid #2FB375; background-color:#FFFFFF; color:#2FB375; padding:12px 16px; border-radius:20px; text-align:center; font-weight:500; font-size:0.9em; margin-bottom:15px;">
                                     {escaped_tag}
                                 </div>
                                 """,

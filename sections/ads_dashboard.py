@@ -349,7 +349,7 @@ def _load_key_advantages_summary():
         return ""
 
 
-def _format_simple_metric_card(label, val, pct=None, rank_now=None, total_ranks=None):
+def _format_simple_metric_card(label, val, pct=None, rank_now=None, total_ranks=None, metric_explanation=None):
     rank_color = "gray"
     if rank_now is not None and total_ranks:
         if int(rank_now) == 1:
@@ -359,12 +359,21 @@ def _format_simple_metric_card(label, val, pct=None, rank_now=None, total_ranks=
     pct_color = None
     if pct is not None:
         pct_color = "green" if pct > 0 else "red" if pct < 0 else "gray"
-    pct_html = f'<p style="margin:0; color:{pct_color};">Δ {pct:.1f}%</p>' if pct is not None else ''
+    # Add tooltip to percentage change
+    pct_tooltip = '<span class="pct-tooltip-icon" data-tooltip="Difference from the average metric">?</span>' if pct is not None else ''
+    pct_html = f'<p style="margin:0; color:{pct_color}; display:inline-flex; align-items:center; gap:4px;">Δ {pct:.1f}%{pct_tooltip}</p>' if pct is not None else ''
     rank_html = f'<p style="margin:0; color:{rank_color};">Rank {int(rank_now)}</p>' if rank_now is not None else ''
+    # Add tooltip icon next to metric label if explanation provided
+    label_with_tooltip = label
+    if metric_explanation:
+        # Escape HTML in explanation for data attribute
+        import html
+        escaped_explanation = html.escape(metric_explanation)
+        label_with_tooltip = f'{label}<span class="metric-tooltip-icon" data-explanation="{escaped_explanation}">?</span>'
     st.markdown(
         f"""
         <div style="border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:10px;">
-            <h5 style="margin:0;">{label}</h5>
+            <h5 style="margin:0; display:inline-flex; align-items:center; gap:4px;">{label_with_tooltip}</h5>
             <h3 style="margin:5px 0;">{val}</h3>
             {pct_html}
             {rank_html}
@@ -463,72 +472,6 @@ def render():
     else:
         df_fixed = df.copy()
 
-    # Pie charts and cards for selected months only
-    st.markdown("### Ad Volume Share (Selected Months)")
-    sub_tabs = st.tabs(["Number of Ads", "Reach"])
-    with sub_tabs[0]:
-        # Normalize brand names before counting
-        if not df_filtered.empty and 'brand' in df_filtered.columns:
-            df_pie_ads = df_filtered.copy()
-            df_pie_ads['brand_normalized'] = df_pie_ads['brand'].apply(
-                lambda b: BRAND_NAME_MAPPING.get(str(b).strip(), str(b).strip())
-            )
-            ad_counts = df_pie_ads["brand_normalized"].value_counts().reset_index()
-        else:
-            ad_counts = pd.DataFrame(columns=["brand", "count"])
-        
-        if not ad_counts.empty:
-            ad_counts.columns = ["brand", "count"]
-
-            # Build a color map that covers all present brands (unknowns -> gray)
-            color_map_ads = {**BRAND_COLORS}
-            for b in ad_counts["brand"].unique():
-                color_map_ads.setdefault(b, DEFAULT_COLOR)
-
-            fig = px.pie(
-                ad_counts,
-                values="count",
-                names="brand",
-                title=f'Ad Count Share – {start_date.strftime("%b %Y")} to {end_date.strftime("%b %Y")}',
-                color="brand",
-                color_discrete_map=color_map_ads,
-                category_orders={"brand": BRAND_ORDER},
-            )
-            st.plotly_chart(fig, use_container_width=True, key="pie_ads_selected")
-        else:
-            st.info("No ads in selected months.")
-
-    with sub_tabs[1]:
-        # Normalize brand names before grouping
-        if not df_filtered.empty and 'brand' in df_filtered.columns:
-            df_pie_reach = df_filtered.copy()
-            df_pie_reach['brand_normalized'] = df_pie_reach['brand'].apply(
-                lambda b: BRAND_NAME_MAPPING.get(str(b).strip(), str(b).strip())
-            )
-            reach_totals = df_pie_reach.groupby("brand_normalized", as_index=False)["reach"].sum()
-            reach_totals.rename(columns={"brand_normalized": "brand"}, inplace=True)
-        else:
-            reach_totals = pd.DataFrame(columns=["brand", "reach"])
-        
-        if not reach_totals.empty:
-
-            color_map_reach = {**BRAND_COLORS}
-            for b in reach_totals["brand"].unique():
-                color_map_reach.setdefault(b, DEFAULT_COLOR)
-
-            fig = px.pie(
-                reach_totals,
-                values="reach",
-                names="brand",
-                title=f'Reach Share – {start_date.strftime("%b %Y")} to {end_date.strftime("%b %Y")}',
-                color="brand",
-                color_discrete_map=color_map_reach,
-                category_orders={"brand": BRAND_ORDER},
-            )
-            st.plotly_chart(fig, use_container_width=True, key="pie_reach_selected")
-        else:
-            st.info("No reach data in selected months.")
-
     # Summary stats (midpoint split) for potential future use; old 4 cards removed
     mid_date = start_date + (end_date - start_date) / 2
     reach_stats = _summary(df_filtered, 'reach', mid_date)
@@ -537,6 +480,108 @@ def render():
     duration_stats = _summary(df_filtered, 'duration_days', mid_date) if 'duration_days' in df_filtered.columns else None
 
     # --- Brand Summary (cards + creativity analysis) ---
+    # Add tooltip CSS
+    st.markdown("""
+    <style>
+        .metric-tooltip-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #2FB375;
+            color: white;
+            text-align: center;
+            line-height: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 6px;
+            vertical-align: middle;
+            position: relative;
+        }
+        .metric-tooltip-icon:hover::after {
+            content: attr(data-explanation);
+            white-space: pre-line;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            max-width: 300px;
+            min-width: 200px;
+            text-align: left;
+            line-height: 1.5;
+        }
+        .metric-tooltip-icon:hover::before {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #333;
+            margin-bottom: 2px;
+            z-index: 1001;
+        }
+        .pct-tooltip-icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: currentColor;
+            color: inherit;
+            text-align: center;
+            line-height: 14px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 4px;
+            vertical-align: middle;
+            position: relative;
+            opacity: 0.7;
+        }
+        .pct-tooltip-icon:hover {
+            opacity: 1;
+        }
+        .pct-tooltip-icon:hover::after {
+            content: "Difference from the average metric";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            font-size: 11px;
+            margin-bottom: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .pct-tooltip-icon:hover::before {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #333;
+            margin-bottom: 2px;
+            z-index: 1001;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
     st.markdown("### Brand Summary")
 
     # Compute reach totals using the selected date range (df_filtered) instead of just the rolling window
@@ -677,7 +722,8 @@ def render():
                         val=f"{total_reach:,}",
                         pct=delta_mean_pct,
                         rank_now=rank_now,
-                        total_ranks=len(reach_ranks) if len(reach_ranks) else None
+                        total_ranks=len(reach_ranks) if len(reach_ranks) else None,
+                        metric_explanation="The total number of unique people who saw your ads. This metric indicates the potential audience size that your advertising campaigns have reached."
                     )
 
                 # Brand Strength
@@ -692,10 +738,11 @@ def render():
                             val=f"{strength:.1f}%",
                             pct=delta_bs,
                             rank_now=rank_bs,
-                            total_ranks=len(bs_df)
+                            total_ranks=len(bs_df),
+                            metric_explanation="A percentage representing how consistently your brand communicates through a dominant brand archetype. Higher percentages indicate stronger, more consistent brand messaging and positioning."
                         )
                     else:
-                        _format_simple_metric_card("Brand Strength", "N/A")
+                        _format_simple_metric_card("Brand Strength", "N/A", metric_explanation="A percentage representing how consistently your brand communicates through a dominant brand archetype. Higher percentages indicate stronger, more consistent brand messaging and positioning.")
 
                 # Creativity
                 with col3:
@@ -719,10 +766,11 @@ def render():
                             val=f"{score:.2f}",
                             pct=delta_cre,
                             rank_now=rank_cre,
-                            total_ranks=creativity_df['brand'].nunique() if not creativity_df.empty else None
+                            total_ranks=creativity_df['brand'].nunique() if not creativity_df.empty else None,
+                            metric_explanation="A score measuring the originality and uniqueness of your ad content. Higher scores indicate more creative and distinctive messaging that stands out from competitors."
                         )
                     else:
-                        _format_simple_metric_card("Creativity", "N/A")
+                        _format_simple_metric_card("Creativity", "N/A", metric_explanation="A score measuring the originality and uniqueness of your ad content. Higher scores indicate more creative and distinctive messaging that stands out from competitors.")
 
                 # Creativity Analysis section
                 if not creativity_df.empty:
@@ -814,6 +862,9 @@ def render():
         st.markdown(
             'Read more about brand archetypes here: [Brandtypes](https://www.comp-os.com/brandtypes)')
         
+    # Ad Volume Share moved below archetype matrix
+    _render_ad_volume_share(df_filtered, start_date, end_date)
+    
 
     # --- Key Advantages ---
     st.markdown("### Key Advantages")
@@ -870,9 +921,6 @@ def render():
 
     # Text analysis and new campaigns sections can be added later as optional blocks
 
-    # Promotions Overview by Company
-    _render_promotions_overview()
-
 def _load_archetype_stats_from_ads_compos():
     """Load archetype statistics from individual ads compos files."""
     stats = {}
@@ -922,6 +970,72 @@ def _load_archetype_stats_from_ads_compos():
     return stats
 
 
+def _render_ad_volume_share(df_filtered: pd.DataFrame, start_date: pd.Timestamp, end_date: pd.Timestamp):
+    """Render ad volume share charts for count and reach."""
+    st.markdown("### Ad Volume Share (Selected Months)")
+    if df_filtered is None or df_filtered.empty:
+        st.info("No ads in selected months.")
+        return
+
+    sub_tabs = st.tabs(["Number of Ads", "Reach"])
+
+    with sub_tabs[0]:
+        df_pie_ads = df_filtered.copy()
+        if "brand" in df_pie_ads.columns:
+            df_pie_ads["brand_normalized"] = df_pie_ads["brand"].apply(
+                lambda b: BRAND_NAME_MAPPING.get(str(b).strip(), str(b).strip())
+            )
+            ad_counts = df_pie_ads["brand_normalized"].value_counts().reset_index()
+        else:
+            ad_counts = pd.DataFrame(columns=["brand", "count"])
+
+        if not ad_counts.empty:
+            ad_counts.columns = ["brand", "count"]
+            color_map_ads = {**BRAND_COLORS}
+            for b in ad_counts["brand"].unique():
+                color_map_ads.setdefault(b, DEFAULT_COLOR)
+            fig = px.pie(
+                ad_counts,
+                values="count",
+                names="brand",
+                title=f'Ad Count Share – {start_date.strftime("%b %Y")} to {end_date.strftime("%b %Y")}',
+                color="brand",
+                color_discrete_map=color_map_ads,
+                category_orders={"brand": BRAND_ORDER},
+            )
+            st.plotly_chart(fig, use_container_width=True, key="pie_ads_selected")
+        else:
+            st.info("No ads in selected months.")
+
+    with sub_tabs[1]:
+        df_pie_reach = df_filtered.copy()
+        if "brand" in df_pie_reach.columns:
+            df_pie_reach["brand_normalized"] = df_pie_reach["brand"].apply(
+                lambda b: BRAND_NAME_MAPPING.get(str(b).strip(), str(b).strip())
+            )
+            reach_totals = df_pie_reach.groupby("brand_normalized", as_index=False)["reach"].sum()
+            reach_totals.rename(columns={"brand_normalized": "brand"}, inplace=True)
+        else:
+            reach_totals = pd.DataFrame(columns=["brand", "reach"])
+
+        if not reach_totals.empty:
+            color_map_reach = {**BRAND_COLORS}
+            for b in reach_totals["brand"].unique():
+                color_map_reach.setdefault(b, DEFAULT_COLOR)
+            fig = px.pie(
+                reach_totals,
+                values="reach",
+                names="brand",
+                title=f'Reach Share – {start_date.strftime("%b %Y")} to {end_date.strftime("%b %Y")}',
+                color="brand",
+                color_discrete_map=color_map_reach,
+                category_orders={"brand": BRAND_ORDER},
+            )
+            st.plotly_chart(fig, use_container_width=True, key="pie_reach_selected")
+        else:
+            st.info("No reach data in selected months.")
+
+
 def _load_archetype_stats_from_agility():
     stats = {}
     for brand in BRANDS:
@@ -957,203 +1071,5 @@ def _load_brand_strength_from_summary():
             dominant = vc.iloc[0]
             strength[col] = (dominant / total) * 100
     return strength
-
-
-@st.cache_data(ttl=0)
-def _load_promotions_data():
-    """Load promotions data from ads_labeled_products.xlsx and return dict of company -> list of top 5 promotions with percentages and examples."""
-    path = os.path.join(DATA_ROOT, "ads", "products", "ads_labeled_products.xlsx")
-    if not os.path.exists(path):
-        return {}
-    
-    try:
-        df = pd.read_excel(path)
-        
-        # Check for required columns
-        if 'pageName' not in df.columns or 'cluster_1' not in df.columns:
-            return {}
-        
-        # Filter out rows with missing cluster_1
-        df = df[df['cluster_1'].notna()].copy()
-        
-        if df.empty:
-            return {}
-        
-        # Track used ad texts to ensure no duplicates across all companies
-        used_ad_texts = set()
-        
-        # Get text column name (could be 'snapshot/body/text' or 'snapshot/body')
-        text_col = None
-        for col in ['snapshot/body/text', 'snapshot/body']:
-            if col in df.columns:
-                text_col = col
-                break
-        
-        # Group by company and cluster_1, count occurrences
-        promotions_by_company = {}
-        
-        for company in df['pageName'].unique():
-            if pd.isna(company):
-                continue
-            
-            company_df = df[df['pageName'] == company]
-            cluster_counts = company_df['cluster_1'].value_counts()
-            total = len(company_df)
-            
-            # Calculate percentages and get top 5
-            top_5 = []
-            for cluster, count in cluster_counts.head(5).items():
-                percentage = (count / total) * 100 if total > 0 else 0
-                
-                # Get 2 unique examples for this promotion category
-                examples = []
-                if text_col:
-                    cluster_df = company_df[company_df['cluster_1'] == cluster]
-                    # Filter out rows with missing text
-                    cluster_df = cluster_df[cluster_df[text_col].notna()].copy()
-                    
-                    for _, row in cluster_df.iterrows():
-                        if len(examples) >= 2:
-                            break
-                        
-                        ad_text = str(row[text_col]).strip()
-                        if not ad_text or ad_text == 'nan':
-                            continue
-                        
-                        # Check if this exact text has been used before
-                        if ad_text not in used_ad_texts:
-                            # Truncate to 50 characters
-                            if len(ad_text) > 50:
-                                ad_text_display = ad_text[:50] + "..."
-                            else:
-                                ad_text_display = ad_text
-                            
-                            # Get adArchiveID for the link
-                            ad_id = None
-                            if 'adArchiveID' in row and pd.notna(row['adArchiveID']):
-                                ad_id = str(int(row['adArchiveID'])) if pd.notna(row['adArchiveID']) else None
-                            
-                            examples.append({
-                                'text': ad_text_display,
-                                'ad_id': ad_id
-                            })
-                            used_ad_texts.add(ad_text)
-                
-                top_5.append({
-                    'promotion': str(cluster),
-                    'percentage': percentage,
-                    'count': int(count),
-                    'examples': examples
-                })
-            
-            if top_5:
-                promotions_by_company[str(company)] = top_5
-        
-        return promotions_by_company
-    except Exception as e:
-        st.error(f"Error loading promotions data: {e}")
-        return {}
-
-
-def _render_promotions_overview():
-    """Render promotions overview with tabs per company showing top 5 promotions."""
-    promotions_data = _load_promotions_data()
-    
-    if not promotions_data:
-        st.info("No promotions data available.")
-        return
-    
-    st.markdown("### Promotions Overview by Company")
-    
-    # Get company names and order them (prefer BRAND_ORDER if available)
-    companies = list(promotions_data.keys())
-    ordered_companies = [c for c in BRAND_ORDER if c in companies]
-    extra_companies = sorted([c for c in companies if c not in BRAND_ORDER])
-    tab_labels = ordered_companies + extra_companies
-    
-    if not tab_labels:
-        st.info("No company data available.")
-        return
-    
-    tabs = st.tabs(tab_labels)
-    
-    for idx, company in enumerate(tab_labels):
-        with tabs[idx]:
-            promotions = promotions_data.get(company, [])
-            
-            if not promotions:
-                st.info(f"No promotions data available for {company}.")
-                continue
-            
-            st.subheader(f"{company} Promotions")
-            
-            # Display each promotion - category and examples on left, percentage on right
-            for promo in promotions:
-                promo_name = html.escape(str(promo['promotion']))
-                percentage = promo['percentage']
-                count = promo['count']
-                examples = promo.get('examples', [])
-                
-                # Create two columns: left for category + examples, right for percentage
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    # Box for promotion name (same width as examples)
-                    st.markdown(
-                        f"""
-                        <div style="border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:10px; background-color:#f9f9f9; box-shadow:0 2px 4px rgba(0,0,0,0.08);">
-                            <h5 style="margin:0; color:#333; font-weight:500;">{promo_name}</h5>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    
-                    # Display examples below the promotion (same width as category box)
-                    if examples:
-                        for example in examples:
-                            # Handle both dict format (new) and string format (old, for backward compatibility)
-                            if isinstance(example, dict):
-                                example_text = example.get('text', '')
-                                ad_id = example.get('ad_id')
-                            else:
-                                # Backward compatibility with old string format
-                                example_text = str(example)
-                                ad_id = None
-                            
-                            # Escape HTML to prevent injection
-                            escaped_text = html.escape(example_text)
-                            
-                            # Create link if ad_id is available
-                            if ad_id:
-                                # Escape the ad_id for URL safety
-                                escaped_ad_id = html.escape(str(ad_id))
-                                ad_url = f"https://www.facebook.com/ads/library/?id={escaped_ad_id}"
-                                example_html = f'<a href="{ad_url}" target="_blank" style="color:#2FB375; text-decoration:none;">"{escaped_text}"</a>'
-                            else:
-                                example_html = f'"{escaped_text}"'
-                            
-                            st.markdown(
-                                f"""
-                                <div style="border:1px solid #e0e0e0; border-radius:10px; padding:12px; margin-bottom:10px; background-color:#fafafa; font-style:italic; color:#555;">
-                                    <p style="margin:0; font-size:0.9em;">{example_html}</p>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                
-                with col2:
-                    # Calculate number of boxes on left (1 category + examples)
-                    num_boxes = 1 + len(examples)
-                    # Box for percentage - use flexbox to match height
-                    st.markdown(
-                        f"""
-                        <div style="border:1px solid #2FB375; border-radius:10px; padding:15px; background-color:#F5FFF9; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.08); display:flex; flex-direction:column; justify-content:center; min-height:{num_boxes * 60}px;">
-                            <h3 style="margin:0; color:#2FB375; font-weight:bold;">{percentage:.1f}%</h3>
-                            <p style="margin:4px 0 0; color:#666; font-size:0.85em;">{count} ads</p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
 
 

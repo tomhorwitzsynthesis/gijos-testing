@@ -1,3 +1,4 @@
+from pathlib import Path
 import streamlit as st
 
 # Set page configuration - must be called before any other Streamlit commands
@@ -6,6 +7,35 @@ st.set_page_config(
     page_title="Dashboard",  # Page title in browser tab
     initial_sidebar_state="expanded"  # Sidebar expanded by default
 )
+
+# Initialize font preference in session state
+if 'use_inter_font' not in st.session_state:
+    st.session_state.use_inter_font = False
+BASE_DIR = Path(__file__).resolve().parent
+BANNER_IMAGE = BASE_DIR / "visuals" / "synthesis_cover.jpg"
+
+# Apply font styling based on user preference
+if st.session_state.use_inter_font:
+    st.markdown(
+        """
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebarContent"], 
+            [data-testid="stHeader"], [data-testid="stToolbar"], 
+            .stApp, .stAppViewContainer, .stSidebar,
+            div[data-testid="stMarkdownContainer"] p,
+            div[data-testid="stMarkdownContainer"] h1,
+            div[data-testid="stMarkdownContainer"] h2,
+            div[data-testid="stMarkdownContainer"] h3,
+            .stText, .stSelectbox, .stRadio, .stButton, .stDataFrame,
+            .stMetric, .stMarkdown, .element-container {
+                font-family: 'Inter', sans-serif !important;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+# When False, no CSS override - Streamlit uses its default font
 
 from utils.date_utils import init_month_selector
 
@@ -31,9 +61,17 @@ from sections.audience_affinity import render as render_audience_affinity
 from sections.ads_dashboard import render as render_ads_dashboard
 from sections.ads_employer_branding_themes import render as render_ads_employer_branding_themes
 from sections.employer_branding import render as render_employer_branding
+from sections.employer_branding_archetype_matrix import render as render_employer_branding_archetype_matrix
 
 #from sections.content_pillar_analysis import render as render_pillars  # If implemented
 # from sections.audience_affinity import render as render_affinity     # Optional
+
+def render_banner():
+    if BANNER_IMAGE.exists():
+        st.image(str(BANNER_IMAGE), use_container_width=True)
+    else:
+        st.warning("Banner image not found.")
+
 
 # --- Sidebar ---
 st.sidebar.title("📁 Navigation")
@@ -43,11 +81,22 @@ section = st.sidebar.radio("Go to", [
     "Content Pillars",
     "Audience Affinity",
     "Ad Intelligence",
-    "Employer Branding"
+    "Employer Branding",
 ])
+
+# Font toggle in sidebar
+st.sidebar.divider()
+st.sidebar.subheader("⚙️ Settings")
+st.sidebar.toggle(
+    "Use Inter Font",
+    value=st.session_state.use_inter_font,
+    key="use_inter_font",
+    help="Toggle between Inter font (Google Fonts) and Streamlit's default font"
+)
 
 # --- Month Filter ---
 init_month_selector()  # Sets start_date / end_date globally
+render_banner()
 
 # --- Section Routing ---
 if section == "Press Releases":
@@ -86,4 +135,5 @@ elif section == "Ad Intelligence":
 
 elif section == "Employer Branding":
     st.title("💼 Employer Branding Dashboard")
+    render_employer_branding_archetype_matrix()
     render_employer_branding()

@@ -21,7 +21,7 @@ def _normalize_brand(name: str) -> str:
     return " ".join(cleaned.split())
 
 
-def _format_simple_metric_card(label, val, pct=None, rank_now=None, total_ranks=None):
+def _format_simple_metric_card(label, val, pct=None, rank_now=None, total_ranks=None, metric_explanation=None):
     rank_color = "gray"
     if rank_now is not None and total_ranks:
         if int(rank_now) == 1:
@@ -31,12 +31,21 @@ def _format_simple_metric_card(label, val, pct=None, rank_now=None, total_ranks=
     pct_color = None
     if pct is not None:
         pct_color = "green" if pct > 0 else "red" if pct < 0 else "gray"
-    pct_html = f'<p style="margin:0; color:{pct_color};">Δ {pct:.1f}%</p>' if pct is not None else ''
+    # Add tooltip to percentage change
+    pct_tooltip = '<span class="pct-tooltip-icon" data-tooltip="Difference from the average metric">?</span>' if pct is not None else ''
+    pct_html = f'<p style="margin:0; color:{pct_color}; display:inline-flex; align-items:center; gap:4px;">Δ {pct:.1f}%{pct_tooltip}</p>' if pct is not None else ''
     rank_html = f'<p style="margin:0; color:{rank_color};">Rank {int(rank_now)}</p>' if rank_now is not None else ''
+    # Add tooltip icon next to metric label if explanation provided
+    label_with_tooltip = label
+    if metric_explanation:
+        # Escape HTML in explanation for data attribute
+        import html
+        escaped_explanation = html.escape(metric_explanation)
+        label_with_tooltip = f'{label}<span class="metric-tooltip-icon" data-explanation="{escaped_explanation}">?</span>'
     st.markdown(
         f"""
         <div style="border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:10px;">
-            <h5 style="margin:0;">{label}</h5>
+            <h5 style="margin:0; display:inline-flex; align-items:center; gap:4px;">{label_with_tooltip}</h5>
             <h3 style="margin:5px 0;">{val}</h3>
             {pct_html}
             {rank_html}
@@ -332,6 +341,108 @@ def _render_summary_tabs(summary_records):
 
 
 def render(selected_platforms=None):
+    # Add tooltip CSS
+    st.markdown("""
+    <style>
+        .metric-tooltip-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #2FB375;
+            color: white;
+            text-align: center;
+            line-height: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 6px;
+            vertical-align: middle;
+            position: relative;
+        }
+        .metric-tooltip-icon:hover::after {
+            content: attr(data-explanation);
+            white-space: pre-line;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            max-width: 300px;
+            min-width: 200px;
+            text-align: left;
+            line-height: 1.5;
+        }
+        .metric-tooltip-icon:hover::before {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #333;
+            margin-bottom: 2px;
+            z-index: 1001;
+        }
+        .pct-tooltip-icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: currentColor;
+            color: inherit;
+            text-align: center;
+            line-height: 14px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 4px;
+            vertical-align: middle;
+            position: relative;
+            opacity: 0.7;
+        }
+        .pct-tooltip-icon:hover {
+            opacity: 1;
+        }
+        .pct-tooltip-icon:hover::after {
+            content: "Difference from the average metric";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            font-size: 11px;
+            margin-bottom: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .pct-tooltip-icon:hover::before {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #333;
+            margin-bottom: 2px;
+            z-index: 1001;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
     st.subheader("📱 Social Media Brand Metrics")
 
     if selected_platforms is None:
@@ -387,9 +498,10 @@ def render(selected_platforms=None):
                         pct=engagement_info["delta"],
                         rank_now=engagement_info["rank"],
                         total_ranks=engagement_total if engagement_total else None,
+                        metric_explanation="The total number of interactions (likes, comments, shares, reactions) on your social media posts. This metric reflects how actively your audience interacts with your content."
                     )
                 else:
-                    _format_simple_metric_card("Engagement", "N/A")
+                    _format_simple_metric_card("Engagement", "N/A", metric_explanation="The total number of interactions (likes, comments, shares, reactions) on your social media posts. This metric reflects how actively your audience interacts with your content.")
 
             with col2:
                 strength_info = strength_stats.get(norm)
@@ -400,9 +512,10 @@ def render(selected_platforms=None):
                         pct=strength_info["delta"],
                         rank_now=strength_info["rank"],
                         total_ranks=strength_total if strength_total else None,
+                        metric_explanation="A percentage representing how consistently your brand communicates through a dominant brand archetype. Higher percentages indicate stronger, more consistent brand messaging and positioning."
                     )
                 else:
-                    _format_simple_metric_card("Brand Strength", "N/A")
+                    _format_simple_metric_card("Brand Strength", "N/A", metric_explanation="A percentage representing how consistently your brand communicates through a dominant brand archetype. Higher percentages indicate stronger, more consistent brand messaging and positioning.")
 
             with col3:
                 creativity_info = creativity_stats.get(norm)
@@ -413,9 +526,10 @@ def render(selected_platforms=None):
                         pct=creativity_info["delta"],
                         rank_now=creativity_info["rank"],
                         total_ranks=creativity_total if creativity_total else None,
+                        metric_explanation="A score measuring the originality and uniqueness of your social media content. Higher scores indicate more creative and distinctive messaging that stands out from competitors."
                     )
                 else:
-                    _format_simple_metric_card("Creativity", "N/A")
+                    _format_simple_metric_card("Creativity", "N/A", metric_explanation="A score measuring the originality and uniqueness of your social media content. Higher scores indicate more creative and distinctive messaging that stands out from competitors.")
 
             detail = creativity_details.get(norm, {})
             if _has_creativity_content(detail):

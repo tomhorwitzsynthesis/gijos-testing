@@ -5,9 +5,25 @@ import html
 import plotly.express as px
 import plotly.graph_objects as go
 from collections import Counter
+from difflib import SequenceMatcher
 from utils.config import BRAND_NAME_MAPPING, DATA_ROOT, BRAND_COLORS
 
 BRAND_ORDER = list(BRAND_COLORS.keys())
+
+
+def _is_similar_to_any(text: str, existing_texts: list[str], threshold: float = 0.8) -> bool:
+    if not text or not existing_texts:
+        return False
+    norm_text = str(text).strip().lower()
+    for other in existing_texts:
+        if not other:
+            continue
+        other_norm = str(other).strip().lower()
+        if not other_norm:
+            continue
+        if SequenceMatcher(None, norm_text, other_norm).ratio() >= threshold:
+            return True
+    return False
 
 
 @st.cache_data(ttl=0)
@@ -48,7 +64,7 @@ def _load_all_employer_branding_data():
                 continue
             
             company_normalized = BRAND_NAME_MAPPING.get(str(company), str(company))
-            post_text = str(row.get('post_text', '')).strip() if 'post_text' in row and pd.notna(row.get('post_text')) else None
+            post_text = str(row.get('post_text', '')).strip() if 'post_text' in row and pd.notna(row.get('post_text')) else ""
             post_url = str(row.get('url', '')).strip() if 'url' in row and pd.notna(row.get('url')) else None
             
             # Process all theme columns
@@ -74,13 +90,14 @@ def _load_all_employer_branding_data():
                 theme_company_counts[theme][company_normalized] += 1
                 
                 # Store examples if post_text is available
-                if post_text and 'post_text' in df.columns:
+                if post_text:
                     key = (company_normalized, theme)
                     if key not in company_theme_examples:
                         company_theme_examples[key] = []
-                    if len(company_theme_examples[key]) < 2:
+                    if len(company_theme_examples[key]) < 8:
                         company_theme_examples[key].append({
                             'text': post_text[:150] + "..." if len(post_text) > 150 else post_text,
+                            'raw_text': post_text,
                             'url': post_url
                         })
         
@@ -96,9 +113,7 @@ def _load_all_employer_branding_data():
         
         # Build themes_by_company with top 5 and examples
         themes_by_company = {}
-        used_post_texts = set()  # Track used examples globally
-        
-        # Group by company
+        company_example_memory: dict[str, list[str]] = {}
         for company_normalized in set(pair['Company'] for pair in company_theme_pairs):
             # Get all themes for this company
             company_themes = [p['Theme'] for p in company_theme_pairs if p['Company'] == company_normalized]
@@ -111,20 +126,42 @@ def _load_all_employer_branding_data():
             
             # Get top 5 themes
             top_5 = []
+            company_example_memory.setdefault(company_normalized, [])
             for theme, count in theme_counts.most_common(5):
                 percentage = (count / total) * 100 if total > 0 else 0
                 
                 # Get examples from stored examples
                 examples = []
                 key = (company_normalized, theme)
-                if key in company_theme_examples:
-                    for ex in company_theme_examples[key]:
-                        ex_text = ex['text'].replace('...', '').strip()
-                        if ex_text not in used_post_texts:
-                            examples.append(ex)
-                            used_post_texts.add(ex_text)
-                            if len(examples) >= 2:
-                                break
+                candidates = company_theme_examples.get(key, [])
+                selected_raws = []
+                for ex in candidates:
+                    raw_text = ex.get('raw_text') or ex.get('text')
+                    if _is_similar_to_any(raw_text, selected_raws):
+                        continue
+                    if _is_similar_to_any(raw_text, company_example_memory[company_normalized]):
+                        continue
+                    examples.append({
+                        'text': ex.get('text', ''),
+                        'url': ex.get('url')
+                    })
+                    selected_raws.append(raw_text)
+                    company_example_memory[company_normalized].append(raw_text)
+                    if len(examples) >= 2:
+                        break
+                if len(examples) < 2:
+                    for ex in candidates:
+                        raw_text = ex.get('raw_text') or ex.get('text')
+                        if raw_text in selected_raws:
+                            continue
+                        examples.append({
+                            'text': ex.get('text', ''),
+                            'url': ex.get('url')
+                        })
+                        selected_raws.append(raw_text)
+                        company_example_memory[company_normalized].append(raw_text)
+                        if len(examples) >= 2:
+                            break
                 
                 top_5.append({
                     'theme': str(theme),
@@ -142,24 +179,8 @@ def _load_all_employer_branding_data():
         return {}, {}, pd.DataFrame()
 
 
-@st.cache_data(ttl=0)
-def _load_employer_branding_themes_data():
-    """Load employer branding themes data - uses optimized shared loader."""
-    themes_data, _, _ = _load_all_employer_branding_data()
-    return themes_data
-
-
-@st.cache_data(ttl=0)
-def _load_theme_distribution_data():
-    """Load theme distribution data - uses optimized shared loader."""
-    _, theme_distribution, _ = _load_all_employer_branding_data()
-    return theme_distribution
-
-
-def _render_theme_distribution_charts():
+def _render_theme_distribution_charts(theme_distribution):
     """Render pie charts showing company distribution for each theme."""
-    theme_distribution = _load_theme_distribution_data()
-    
     if not theme_distribution:
         st.info("No theme distribution data available.")
         return
@@ -229,98 +250,93 @@ def _render_theme_distribution_charts():
             st.plotly_chart(fig, use_container_width=True)
 
 
-@st.cache_data(ttl=0)
-def _load_company_theme_counts():
-    """Load company theme counts - uses optimized shared loader."""
-    _, _, counts_df = _load_all_employer_branding_data()
-    return counts_df
-
-
-def _render_company_theme_stacked_bar():
-    """Render stacked bar chart showing number of posts per company, stacked by theme."""
-    counts_df = _load_company_theme_counts()
-    
+def _render_company_theme_stacked_bar(counts_df):
+    """Render employer branding posts charts (total + 100% stacked)."""
     if counts_df.empty:
         st.info("No data available for stacked bar chart.")
         return
     
     st.markdown("### Employer Branding Posts by Company and Theme")
-    st.markdown("Stacked bar chart showing total posts per company, divided by theme.")
+    st.markdown("Compare total post volume and theme mix for each company.")
     
-    # Pivot the data to have companies as rows and themes as columns
     pivot_df = counts_df.pivot(index='Company', columns='Theme', values='Count').fillna(0)
-    
-    # Sort companies by total posts (descending)
     pivot_df['Total'] = pivot_df.sum(axis=1)
     pivot_df = pivot_df.sort_values('Total', ascending=False)
-    pivot_df = pivot_df.drop('Total', axis=1)
+    totals = pivot_df['Total'].copy()
+    pivot_df = pivot_df.drop(columns='Total')
     
-    # Get all themes and create a color map
     all_themes = sorted(pivot_df.columns.tolist())
-    
-    # Create a color palette for themes (using a distinct color scheme)
-    # Use a larger color palette that cycles if needed
     theme_colors = px.colors.qualitative.Set3 + px.colors.qualitative.Pastel + px.colors.qualitative.Dark2
     theme_color_map = {theme: theme_colors[i % len(theme_colors)] for i, theme in enumerate(all_themes)}
     
-    # Create stacked bar chart
-    # Reset index to make Company a column
-    plot_df = pivot_df.reset_index()
+    tabs = st.tabs(["Total Volume", "Theme Mix (100%)"])
     
-    # Create the figure with go.Bar for better control
-    fig = go.Figure()
+    with tabs[0]:
+        st.markdown("#### Total Posts per Company")
+        fig_total = px.bar(
+            x=totals.index,
+            y=totals.values,
+            labels={'x': 'Company', 'y': 'Posts'},
+            color_discrete_sequence=['#2FB375']
+        )
+        fig_total.update_layout(
+            height=450,
+            margin=dict(l=20, r=20, t=50, b=100),
+            xaxis=dict(tickangle=-45)
+        )
+        fig_total.update_traces(hovertemplate='<b>%{x}</b><br>Posts: %{y}<extra></extra>')
+        st.plotly_chart(fig_total, use_container_width=True)
     
-    # Add a trace for each theme
-    for theme in all_themes:
-        fig.add_trace(go.Bar(
-            name=theme,
-            x=plot_df['Company'],
-            y=plot_df[theme],
-            marker_color=theme_color_map[theme]
-        ))
-    
-    # Update layout for stacked bars
-    fig.update_layout(
-        barmode='stack',
-        title='Number of Employer Branding Posts by Company and Theme',
-        xaxis_title='Company',
-        yaxis_title='Number of Posts',
-        height=500,
-        margin=dict(l=20, r=20, t=50, b=100),
-        legend=dict(
-            title='Theme',
-            orientation='v',
-            yanchor='top',
-            y=1,
-            xanchor='left',
-            x=1.02
-        ),
-        xaxis=dict(tickangle=-45)
-    )
-    
-    # Update hover template
-    fig.update_traces(
-        hovertemplate='<b>%{fullData.name}</b><br>Company: %{x}<br>Posts: %{y}<extra></extra>'
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    with tabs[1]:
+        st.markdown("#### Theme Mix (Share of Posts)")
+        percent_df = pivot_df.div(pivot_df.sum(axis=1).replace(0, 1), axis=0) * 100
+        plot_df = percent_df.reset_index()
+        fig_mix = go.Figure()
+        for theme in all_themes:
+            fig_mix.add_trace(go.Bar(
+                name=theme,
+                x=plot_df['Company'],
+                y=plot_df[theme],
+                marker_color=theme_color_map[theme],
+                customdata=pivot_df[theme].values,
+                hovertemplate='<b>%{x}</b><br>Theme: %{fullData.name}<br>Share: %{y:.1f}%<br>Posts: %{customdata}<extra></extra>'
+            ))
+        fig_mix.update_layout(
+            barmode='stack',
+            title='Theme Mix per Company (100% stacked)',
+            xaxis_title='Company',
+            yaxis_title='Share of Posts (%)',
+            height=500,
+            margin=dict(l=20, r=20, t=50, b=100),
+            legend=dict(
+                title='Theme',
+                orientation='v',
+                yanchor='top',
+                y=1,
+                xanchor='left',
+                x=1.02
+            ),
+            xaxis=dict(tickangle=-45),
+            yaxis=dict(range=[0, 100])
+        )
+        st.plotly_chart(fig_mix, use_container_width=True)
 
 
 def render():
     """Render employer branding themes overview with tabs per company showing top 5 themes."""
+    themes_data, theme_distribution, counts_df = _load_all_employer_branding_data()
+    
     # First render the stacked bar chart
-    _render_company_theme_stacked_bar()
+    _render_company_theme_stacked_bar(counts_df)
     
     st.markdown("---")
     
     # Then render the pie charts
-    _render_theme_distribution_charts()
+    _render_theme_distribution_charts(theme_distribution)
     
     st.markdown("---")
     
     # Then render the company overview
-    themes_data = _load_employer_branding_themes_data()
-    
     if not themes_data:
         st.info("No employer branding themes data available.")
         return
@@ -349,69 +365,59 @@ def render():
             
             st.subheader(f"{company} Employer Branding Themes")
             
-            # Display each theme - category and examples on left, percentage on right
+            # Display each theme with metrics and examples stacked vertically
             for theme_item in themes:
                 theme_name = html.escape(str(theme_item['theme']))
                 percentage = theme_item['percentage']
                 count = theme_item['count']
                 examples = theme_item.get('examples', [])
                 
-                # Create two columns: left for category + examples, right for percentage
-                col1, col2 = st.columns([2, 1])
+                example_cards = []
+                if examples:
+                    for example in examples:
+                        if isinstance(example, dict):
+                            example_text = example.get('text', '')
+                            example_url = example.get('url')
+                        else:
+                            example_text = str(example)
+                            example_url = None
+                        
+                        escaped_text = html.escape(example_text)
+                        
+                        if example_url:
+                            escaped_url = html.escape(str(example_url))
+                            example_html = f'<a href="{escaped_url}" target="_blank" style="color:#2FB375; text-decoration:none;">"{escaped_text}"</a>'
+                        else:
+                            example_html = f'"{escaped_text}"'
+                        
+                        example_cards.append(
+                            f'<div style="border:1px solid #e0e0e0; border-radius:10px; padding:12px; margin-bottom:10px; '
+                            f'background-color:#fafafa; font-style:italic; color:#555;">\n'
+                            f'    <p style="margin:0; font-size:0.9em;">{example_html}</p>\n'
+                            f'</div>'
+                        )
+                else:
+                    example_cards.append("<p style='margin:4px 0 0; color:#666;'>No examples available.</p>")
                 
-                with col1:
-                    # Box for theme name (same width as examples)
-                    st.markdown(
-                        f"""
-                        <div style="border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:10px; background-color:#f9f9f9; box-shadow:0 2px 4px rgba(0,0,0,0.08);">
-                            <h5 style="margin:0; color:#333; font-weight:500;">{theme_name}</h5>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    
-                    # Display examples below the theme (same width as category box)
-                    if examples:
-                        for example in examples:
-                            # Handle both dict format (new) and string format (old, for backward compatibility)
-                            if isinstance(example, dict):
-                                example_text = example.get('text', '')
-                                example_url = example.get('url')
-                            else:
-                                # Backward compatibility with old string format
-                                example_text = str(example)
-                                example_url = None
-                            
-                            # Escape HTML to prevent injection
-                            escaped_text = html.escape(example_text)
-                            
-                            # Create link if URL is available
-                            if example_url:
-                                escaped_url = html.escape(str(example_url))
-                                example_html = f'<a href="{escaped_url}" target="_blank" style="color:#2FB375; text-decoration:none;">"{escaped_text}"</a>'
-                            else:
-                                example_html = f'"{escaped_text}"'
-                            
-                            st.markdown(
-                                f"""
-                                <div style="border:1px solid #e0e0e0; border-radius:10px; padding:12px; margin-bottom:10px; background-color:#fafafa; font-style:italic; color:#555;">
-                                    <p style="margin:0; font-size:0.9em;">{example_html}</p>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                example_cards_html = "\n".join(example_cards)
                 
-                with col2:
-                    # Calculate number of boxes on left (1 category + examples)
-                    num_boxes = 1 + len(examples)
-                    # Box for percentage - use flexbox to match height
-                    st.markdown(
-                        f"""
-                        <div style="border:1px solid #2FB375; border-radius:10px; padding:15px; background-color:#F5FFF9; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.08); display:flex; flex-direction:column; justify-content:center; min-height:{num_boxes * 60}px;">
-                            <h3 style="margin:0; color:#2FB375; font-weight:bold;">{percentage:.1f}%</h3>
-                            <p style="margin:4px 0 0; color:#666; font-size:0.85em;">{count} posts</p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                card_html = (
+                    f'<div style="border:1px solid #ddd; border-radius:12px; padding:18px; margin-bottom:16px; '
+                    f'background-color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.06);">\n'
+                    f'    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">\n'
+                    f'        <div>\n'
+                    f'            <h5 style="margin:0; color:#333; font-weight:600;">{theme_name}</h5>\n'
+                    f'        </div>\n'
+                    f'        <div style="text-align:right;">\n'
+                    f'            <p style="margin:0; font-size:1.8em; color:#2FB375; font-weight:700;">{percentage:.1f}%</p>\n'
+                    f'            <p style="margin:4px 0 0; color:#666; font-size:0.9em;">{count} posts</p>\n'
+                    f'        </div>\n'
+                    f'    </div>\n'
+                    f'    <div style="margin-top:12px;">\n'
+                    f'{example_cards_html}\n'
+                    f'    </div>\n'
+                    f'</div>'
+                )
+                
+                st.markdown(card_html, unsafe_allow_html=True)
 

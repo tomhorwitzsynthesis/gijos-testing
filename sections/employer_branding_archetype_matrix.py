@@ -261,7 +261,7 @@ def render():
     extra_companies = sorted([c for c in companies if c not in BRAND_ORDER])
     
     # Create tab labels - add comparison tab first
-    tab_labels = ["🔍 Comparison"] + ordered_companies + extra_companies
+    tab_labels = ["Comparison"] + ordered_companies + extra_companies
     
     tabs = st.tabs(tab_labels)
     

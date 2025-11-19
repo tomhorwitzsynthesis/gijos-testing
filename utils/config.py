@@ -7,7 +7,7 @@ DATA_ROOT = os.path.join("data")
 
 # Brands to include in the dashboard
 # BRANDS = ["Swedbank", "Citadele", "Luminor", "SEB", "Artea"]
-BRANDS = ["EPSO-G", "Exergi", "Helen", "HOFOR", "Ignitis", "Kauno Energija", "LTG", "LTOU", "Teltonika", "Via Lietuva"]
+BRANDS = ["EPSO-G", "Exergi", "Gijos", "Helen", "HOFOR", "Ignitis", "Kauno Energija", "LTG", "LTOU", "Teltonika", "Via Lietuva"]
 
 # Mapping from file name variations to canonical brand names
 # This helps normalize brand names extracted from file names
@@ -15,6 +15,7 @@ BRAND_NAME_MAPPING = {
     # Canonical names (identity mapping)
     "EPSO-G": "EPSO-G",
     "Exergi": "Exergi",
+    "Gijos": "Gijos",
     "Helen": "Helen",
     "HOFOR": "HOFOR",
     "Ignitis": "Ignitis",
@@ -49,11 +50,23 @@ BRAND_NAME_MAPPING = {
     # Additional variations from ads data
     "stockholm exergi ab": "Exergi",
     "stockholm exergi": "Exergi",
+    # Gijos variations from source files
+    "gijos": "Gijos",
+    "gijos_compos_analysis": "Gijos",
+    "gijos_compos": "Gijos",
+    "miestogijos": "Gijos",
+    "miestosgijos": "Gijos",
+    "miesto gijos": "Gijos",
+    "miestos gijos": "Gijos",
+    "miesto-gijos": "Gijos",
+    "miestos-gijos": "Gijos",
+    "ads_scraping_miestosgijos": "Gijos",
 }
 
 BRAND_COLORS = {
     "EPSO-G": "#4083B3",  # Blue
     "Exergi": "#2FB375",  # Teal/Green
+    "Gijos": "#7BC86C",  # Fresh green
     "Helen": "#FF6B35",  # Orange
     "HOFOR": "#4ECDC4",  # Turquoise
     "Ignitis": "#FFE66D",  # Yellow

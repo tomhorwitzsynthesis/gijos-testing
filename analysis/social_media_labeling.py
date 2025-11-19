@@ -16,7 +16,7 @@ from openai import OpenAI
 # ----------------------------------------------------
 DEFAULT_MODEL = "gpt-4o-mini"
 TEMPERATURE = 0
-MAX_WORKERS = 50
+MAX_WORKERS = 100
 MAX_CHARS_PER_AD = 1400
 
 # Feature flags - set to True/False to enable/disable each step

@@ -444,7 +444,7 @@ def _render_category(meta: dict):
 
 
 def render():
-    st.title("🔍Website Intelligence Dashboard")
+    st.title("Website Intelligence Dashboard")
     # Loader for website archetypes summary
 
     def _load_top_archetypes_from_website_compos() -> Dict[str, List[Dict[str, Any]]]:

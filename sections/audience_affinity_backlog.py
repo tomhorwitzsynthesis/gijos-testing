@@ -33,14 +33,14 @@ def render():
     try:
         affinity_data = load_audience_affinity_outputs()
         if affinity_data is None:
-            st.error("❌ No audience affinity data available.")
+            st.error("No audience affinity data available.")
             return
 
         summary_df = affinity_data.get("summary_df")
         gpt_summary = affinity_data.get("gpt_summary")
 
         if summary_df is None or summary_df.empty:
-            st.error("❌ No summary data available.")
+            st.error("No summary data available.")
             return
 
         summary_df["Brand"] = summary_df["Brand"].map(
@@ -52,7 +52,7 @@ def render():
             ["Audience Averages", "Customers & End Users", "Job Seekers & Talent", "Professionals", "Decision Makers & Investors"]
         )
 
-        st.subheader(f"🔍 {view_option} View")
+        st.subheader(f"{view_option} View")
 
         # Overview text
         st.markdown(
@@ -103,9 +103,9 @@ def render():
         # GPT Summary
         if gpt_summary:
             st.markdown("---")
-            st.subheader("🧠 Summary")
+            st.subheader("Summary")
             st.markdown(gpt_summary)
 
     except Exception as e:
-        st.error("🚨 Failed to load audience affinity data.")
+        st.error("Failed to load audience affinity data.")
         st.exception(e)

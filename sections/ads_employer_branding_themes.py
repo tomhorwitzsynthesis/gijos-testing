@@ -9,6 +9,7 @@ from difflib import SequenceMatcher
 from utils.config import BRAND_NAME_MAPPING, DATA_ROOT, BRAND_COLORS
 
 BRAND_ORDER = list(BRAND_COLORS.keys())
+MIN_ADS_FOR_OVERVIEW = 8
 
 
 def _normalize_brand(name: str) -> str:
@@ -107,12 +108,14 @@ def _load_all_employer_branding_data():
         company_theme_pairs = []
         theme_company_counts = {}
         company_theme_examples = {}
+        ads_per_company = Counter()
         
         for _, row in df.iterrows():
             company = row[company_col]
             if pd.isna(company):
                 continue
             company_normalized = _normalize_company_name(str(company))
+            ads_per_company[company_normalized] += 1
             
             ad_text = ""
             if text_col and text_col in row and pd.notna(row[text_col]):
@@ -210,10 +213,10 @@ def _load_all_employer_branding_data():
             str(theme): dict(counter) for theme, counter in theme_company_counts.items()
         }
         
-        return themes_by_company, theme_distribution, counts_df
+        return themes_by_company, theme_distribution, counts_df, dict(ads_per_company)
     except Exception as e:
         st.error(f"Error loading employer branding themes data: {e}")
-        return {}, {}, pd.DataFrame()
+        return {}, {}, pd.DataFrame(), {}
 
 
 def _render_theme_distribution_charts(theme_distribution):
@@ -346,7 +349,7 @@ def _render_company_theme_stacked_bar(counts_df):
 
 def render():
     """Render employer branding themes overview with tabs per company showing top 5 themes."""
-    themes_data, theme_distribution, counts_df = _load_all_employer_branding_data()
+    themes_data, theme_distribution, counts_df, ads_per_company = _load_all_employer_branding_data()
     
     # First render the stacked bar chart
     _render_company_theme_stacked_bar(counts_df)
@@ -363,15 +366,16 @@ def render():
         return
     
     st.markdown("### Employer Branding Themes Overview by Company")
+    st.caption(f"Only companies with at least {MIN_ADS_FOR_OVERVIEW} employer branding ads are shown below.")
     
     # Get company names and order them (prefer BRAND_ORDER if available)
-    companies = list(themes_data.keys())
+    companies = [c for c in themes_data.keys() if ads_per_company.get(c, 0) >= MIN_ADS_FOR_OVERVIEW]
     ordered_companies = [c for c in BRAND_ORDER if c in companies]
     extra_companies = sorted([c for c in companies if c not in BRAND_ORDER])
     tab_labels = ordered_companies + extra_companies
     
     if not tab_labels:
-        st.info("No company data available.")
+        st.info(f"No companies have at least {MIN_ADS_FOR_OVERVIEW} employer branding ads to show detailed themes.")
         return
     
     tabs = st.tabs(tab_labels)
@@ -384,7 +388,9 @@ def render():
                 st.info(f"No themes data available for {company}.")
                 continue
             
+            total_ads = ads_per_company.get(company, 0)
             st.subheader(f"{company} Employer Branding Themes")
+            st.markdown(f"<p style='color:#5F6B7C;'>Total ads analyzed: {total_ads}</p>", unsafe_allow_html=True)
             
             # Display each theme with metrics and examples stacked vertically
             for theme_item in themes:

@@ -54,7 +54,7 @@ def render(selected_platforms=None):
         st.info("No supported social platforms selected.")
         return
 
-    st.subheader("🏆 Top Social Media Posts")
+    st.subheader("Top Social Media Posts")
 
     start_date, end_date = get_selected_date_range()
 
@@ -127,7 +127,7 @@ def render(selected_platforms=None):
 
         # Use BRANDS to avoid duplicates
         brand_display_names = BRANDS
-        tab_labels = ["🌍 Overall"] + [f"🏢 {brand}" for brand in brand_display_names]
+        tab_labels = ["Overall"] + [f"{brand}" for brand in brand_display_names]
         tabs = st.tabs(tab_labels)
 
         with tabs[0]:

@@ -11,7 +11,7 @@ def render():
             st.warning("No analysis data found.")
             return
 
-        st.subheader("🏛️ Content Pillar Analysis")
+        st.subheader("Content Pillar Analysis")
 
         if not content_pillar_outputs:
             st.warning("No analysis data found.")
@@ -63,5 +63,5 @@ def render():
                         st.markdown(f"- {example}")
 
     except Exception as e:
-        st.error("🚨 Failed to load content pillar analysis.")
+        st.error("Failed to load content pillar analysis.")
         st.exception(e)

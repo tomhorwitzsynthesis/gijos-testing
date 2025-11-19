@@ -237,7 +237,7 @@ def render():
             overall_total += count_int
     
     # Create tabs for overall and each company
-    matrix_labels = ["🌍 Overall"] + list(archetype_stats.keys())
+    matrix_labels = ["Overall"] + list(archetype_stats.keys())
     matrix_tabs = st.tabs(matrix_labels)
     
     with matrix_tabs[0]:

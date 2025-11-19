@@ -49,7 +49,7 @@ def load_file(path, sheet):
         try:
             return pd.read_excel(path, sheet_name=sheet)
         except Exception as e:
-            print(f"    ⚠ Error reading Excel file: {e}")
+            print(f"    Error reading Excel file: {e}")
             print(f"    Available sheets (if any):")
             try:
                 xl_file = pd.ExcelFile(path)
@@ -254,7 +254,7 @@ def main():
         print(f"  Full path: {path}")
         
         if not os.path.exists(path):
-            print(f"  ❌ File not found: {path}")
+            print(f"  File not found: {path}")
             continue
         
         print(f"  ✓ File found, loading...")
@@ -263,7 +263,7 @@ def main():
             print(f"  ✓ Loaded {len(df)} rows, {len(df.columns)} columns")
             print(f"  Columns: {list(df.columns)[:10]}...")  # Show first 10 columns
         except Exception as e:
-            print(f"  ❌ Error loading file: {e}")
+            print(f"  Error loading file: {e}")
             continue
         
         print(f"  Processing data for brand '{brand}'...")
@@ -272,14 +272,14 @@ def main():
             print(f"  ✓ Processed: {len(processed)} rows after filtering (Quality='A')")
             results.append((filename, processed))
         except Exception as e:
-            print(f"  ❌ Error processing file: {e}")
+            print(f"  Error processing file: {e}")
             import traceback
             traceback.print_exc()
             continue
 
     print("\n" + "=" * 60)
     if not results:
-        print("❌ No data processed.")
+        print("No data processed.")
         return
 
     # Save each processed file back to its original location (overwriting completely)
@@ -296,7 +296,7 @@ def main():
             print(f"  ✓ Overwritten: {len(processed_df)} rows saved")
             processed_files.append(filename)
         except Exception as e:
-            print(f"  ❌ Error saving {filename}: {e}")
+            print(f"  Error saving {filename}: {e}")
             import traceback
             traceback.print_exc()
     

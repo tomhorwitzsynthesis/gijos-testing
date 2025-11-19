@@ -847,7 +847,7 @@ def render():
                             unsafe_allow_html=True,
                         )
 
-        matrix_labels = ["🌍 Overall"] + list(archetype_stats.keys())
+        matrix_labels = ["Overall"] + list(archetype_stats.keys())
         matrix_tabs = st.tabs(matrix_labels)
 
         with matrix_tabs[0]:

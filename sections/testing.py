@@ -198,7 +198,7 @@ def _load_filtered_ads_data():
 
 def _render_density_plots_section():
     """Render combined view of ad reach vs duration with trend line and duration slider."""
-    st.subheader("📊 Ad Reach vs Duration")
+    st.subheader("Ad Reach vs Duration")
     st.caption(
         "Explore the relationship between ad reach and duration. Use the slider to filter by minimum duration."
     )
@@ -358,7 +358,7 @@ def _render_correlation_map_section():
 
 def _render_alerts_section():
     """Render a prototype alerts panel with illustrative blinking alerts."""
-    st.subheader("🚨 Prototype Alerts")
+    st.subheader("Prototype Alerts")
     st.caption("Demonstrates the types of automated alerts you could enable later (with blinking animations).")
 
     # Inject CSS for blinking animation
@@ -401,22 +401,22 @@ def _render_alerts_section():
     alerts = [
         (
             "warning",
-            "⚠️ Reach Drop Alert",
+            "Reach Drop Alert",
             "Ignitis reach fell 35% week-over-week — consider refreshing LinkedIn creative.",
         ),
         (
             "error",
-            "🔴 Duration Spike",
+            "Duration Spike",
             "Teltonika has 12 ads running for 60+ days. Review fatigue risk and rotation cadence.",
         ),
         (
             "info",
-            "💡 Format Opportunity",
+            "Format Opportunity",
             "Kauno Energija video ads outperform static posts by 2.4× engagement — replicate across markets.",
         ),
         (
             "success",
-            "✅ Performance Milestone",
+            "Performance Milestone",
             "Exergi reached 1M total reach this month — celebrate this achievement!",
         ),
     ]
@@ -431,7 +431,7 @@ def _render_alerts_section():
 
 
 def _render_wordcloud_section():
-    st.subheader("☁️ LinkedIn Word Clouds")
+    st.subheader("LinkedIn Word Clouds")
     st.caption(
         "Explores the language used across LinkedIn posts. The overview combines all brands, "
         "while the tabs highlight brand-specific vocabularies."
@@ -498,7 +498,7 @@ def _render_wordcloud_section():
         st.info("No post text available for the selected date range.")
         return
 
-    tabs = st.tabs(["🌍 Overview"] + [f"🏢 {brand}" for brand in brand_text_map.keys()])
+    tabs = st.tabs(["Overview"] + [f"{brand}" for brand in brand_text_map.keys()])
 
     with tabs[0]:
         with st.spinner("Generating overview word cloud..."):
@@ -519,7 +519,7 @@ def _render_wordcloud_section():
 
 
 def render():
-    st.title("🧪 Testing Ground")
+    st.title("Testing Ground")
     st.write(
         "A sandbox for experimental visuals. Currently includes density plots, correlation heatmaps, "
         "prototype alerts, and LinkedIn word clouds."

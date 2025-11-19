@@ -369,7 +369,7 @@ def render():
     </style>
     """, unsafe_allow_html=True)
     
-    st.subheader("📈 Press Release Brand Metrics")
+    st.subheader("Press Release Brand Metrics")
 
     start_date, end_date = get_selected_date_range()
     _render_summary_tabs(load_brand_summaries("pr"))

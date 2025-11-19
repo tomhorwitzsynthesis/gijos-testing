@@ -47,7 +47,7 @@ def _format_week_axis(fig, series: pd.Series):
 
 
 def render(selected_platforms=None):
-    st.subheader("📈 Social Media Volume & Engagement Trends")
+    st.subheader("Social Media Volume & Engagement Trends")
 
     # Default to all supported platforms if none provided
     if not selected_platforms:
@@ -140,7 +140,7 @@ def render(selected_platforms=None):
         df_combined = pd.DataFrame(weekly_rows)
         df_combined["Week"] = pd.to_datetime(df_combined["Week"])
 
-        tab1, tab2, tab3 = st.tabs(["📊 Volume", "🔥 Engagement", "📈 Engagement Per Follower"])
+        tab1, tab2, tab3 = st.tabs(["Volume", "Engagement", "Engagement Per Follower"])
 
         with tab1:
             df_plot = _normalized(df_combined)

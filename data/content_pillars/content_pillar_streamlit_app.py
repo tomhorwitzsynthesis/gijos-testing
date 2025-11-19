@@ -39,5 +39,5 @@ try:
                             for example in theme['examples']:
                                 st.markdown(f"- {example}")
 except Exception as e:
-    st.error("🚨 Streamlit app failed to load.")
+    st.error("Streamlit app failed to load.")
     st.exception(e)

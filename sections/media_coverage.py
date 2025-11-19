@@ -35,7 +35,7 @@ def render(mode: str = "by_brand"):
         st.error(f"Invalid mode '{mode}' in media_coverage.render(). Use 'by_brand' or 'by_brand_and_country'.")
         return
 
-    st.subheader("📰 Media Mentions Coverage Share")
+    st.subheader("Media Mentions Coverage Share")
 
     st.markdown("""
     This section visualizes the share of media mentions across brands. 
@@ -72,13 +72,13 @@ def render(mode: str = "by_brand"):
     df_all = pd.concat(filtered_frames, ignore_index=True)
 
     if mode == "by_brand":
-        tabs = st.tabs(["📰 Coverage", "📢 Reach"])
+        tabs = st.tabs(["Coverage", "Reach"])
         with tabs[0]:
             _plot_share_pie(df_all, title="Total Media Coverage Share")
         with tabs[1]:
             _plot_reach_pie(df_all, title="Total Media Reach Share (Impressions)")
     else:  # by_brand_and_country
-        region_tabs = st.tabs([f"🌍 {region}" for region in REGIONS.keys()] + ["📢 Reach"])
+        region_tabs = st.tabs([f"{region}" for region in REGIONS.keys()] + ["Reach"])
         for i, (region_name, country_filter) in enumerate(REGIONS.items()):
             with region_tabs[i]:
                 region_df = df_all if country_filter is None else df_all[df_all["Country"] == country_filter]

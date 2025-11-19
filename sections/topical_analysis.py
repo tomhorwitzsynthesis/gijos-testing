@@ -17,7 +17,7 @@ def load_topic_insights():
         return None
 
 def render() -> None:
-    st.subheader("🧠 Key Communication Topics with Examples")
+    st.subheader("Key Communication Topics with Examples")
 
     df = load_topic_insights()
     if df is None or df.empty:
@@ -25,7 +25,7 @@ def render() -> None:
         return
 
     brands = df["Brand"].unique()
-    tabs = st.tabs([f"🏢 {brand}" for brand in brands])
+    tabs = st.tabs([f"{brand}" for brand in brands])
 
     for i, brand in enumerate(brands):
         with tabs[i]:

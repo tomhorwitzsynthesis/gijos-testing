@@ -1,96 +1,96 @@
 {
-    "scope": "cross_company_comparison",
-    "themes": {
-      "value_proposition": {
-        "common": {
-          "tags": [
-            "Meaningful public impact",
-            "Stable infrastructure work",
-            "Modern benefits hinted"
-          ],
-          "summary": "Across all brands, the value proposition consistently leans on meaningful work in critical infrastructure (energy, transport, utilities) with strong job stability. Most position themselves as important for cities or the country and mention at least some modern perks (flexibility, insurance, extra leave), even if not always very detailed."
-        },
-        "differences": {
-          "tags": [
-            "Local vs global focus",
-            "High-tech vs classic infra",
-            "‘Unique’ work environments"
-          ],
-          "summary": "The main differentiation is how sharply they position their setting: Teltonika sells a fast-paced global IoT and manufacturing story, Ignitis an international green-energy group, while Kauno energija, Exergi and HOFOR emphasise being the local city energy/water company. LTG and Via Lietuva frame themselves as national backbone infrastructure, LTOU sells the ‘only working environment like this’ aviation angle, and Helen leans on being in strong transformation. The clarity and sharpness of the EVP varies significantly between brands."
-        }
+  "scope": "cross_company_comparison",
+  "themes": {
+    "value_proposition": {
+      "common": {
+        "tags": [
+          "Meaningful public impact",
+          "Stable infrastructure work",
+          "Modern and flexible benefits"
+        ],
+        "summary": "Across all brands, the value proposition consistently leans on meaningful work in critical infrastructure (energy, transport, utilities) with strong job stability. Most position themselves as important for cities or the country and mention modern perks such as flexibility, health insurance or extra leave; a few, like Gijos, go further with very progressive setups."
       },
-      "purpose_impact": {
-        "common": {
-          "tags": [
-            "Sustainability narrative",
-            "Essential services",
-            "Societal responsibility"
-          ],
-          "summary": "Most brands explicitly connect their purpose to sustainability and reliable essential services: keeping cities warm, supplied with water, powered, connected by rail or roads, or enabled to fly. They all claim a societal role, frequently tying individual jobs to service reliability and greener systems."
-        },
-        "differences": {
-          "tags": [
-            "City vs national focus",
-            "Energy vs mobility vs IoT",
-            "Depth of impact story"
-          ],
-          "summary": "Exergi and HOFOR clearly frame impact around a specific city (Stockholm/Copenhagen), Kauno energija and Helen around local or national energy, while EPSO-G and Ignitis emphasise national and regional energy security and green transition. LTG and Via Lietuva push sustainable mobility and connectivity, LTOU focuses on being a gateway and economic driver, and Teltonika’s impact is more tech- and connectivity-oriented than societal. Some brands (Ignitis, LTG, Exergi, HOFOR) give concrete climate or community angles; others keep impact more generic."
-        }
+      "differences": {
+        "tags": [
+          "Local vs global focus",
+          "High-tech vs classic infra",
+          "Distinctive work-life models"
+        ],
+        "summary": "The main differentiation is how sharply they position their setting and work-life model: Teltonika sells a fast-paced global IoT and manufacturing story, Ignitis an international green-energy group, while Kauno energija, Gijos, Exergi and HOFOR emphasise being the local city energy/water company. LTG and Via Lietuva frame themselves as national backbone infrastructure, LTOU sells the ‘only working environment like this’ aviation angle, and Helen leans on being in strong transformation. Gijos stands out with a 4-day work week, long EU-based remote work options and strong well-being framing. The clarity and sharpness of the EVP varies significantly between brands."
+      }
+    },
+    "purpose_impact": {
+      "common": {
+        "tags": [
+          "Sustainability narrative",
+          "Essential services",
+          "Societal responsibility"
+        ],
+        "summary": "Most brands explicitly connect their purpose to sustainability and reliable essential services: keeping cities warm, supplied with water, powered, connected by rail or roads, or enabled to fly. They all claim a societal role, frequently tying individual jobs to service reliability and greener systems."
       },
-      "target_talent_profile": {
-        "common": {
-          "tags": [
-            "Technical specialists needed",
-            "Mid-level professionals",
-            "Operations and field roles"
-          ],
-          "summary": "All brands have a strong demand for technical and operational talent: engineers, technicians, electricians, operators and similar roles. The core target group is clearly mid-level professionals with relevant education/experience, often in regulated infrastructure environments."
-        },
-        "differences": {
-          "tags": [
-            "Breadth of role spectrum",
-            "Early-career focus uneven",
-            "Language and locality"
-          ],
-          "summary": "Ignitis, LTG, LTOU and HOFOR also actively target corporate and specialist roles (finance, HR, comms, leadership) and present themselves as multi-professional environments, whereas Kauno energija, Via Lietuva, Helen, Exergi and Teltonika are more heavily skewed towards specific technical/production/project profiles. LTG and HOFOR clearly mention students, apprentices and trainees; Exergi has strong youth/apprenticeship emphasis; Ignitis and EPSO-G hint at broader careers but less structurally. Several brands (Helen, Exergi, HOFOR, Teltonika) are implicitly local-language-first, which narrows the talent pool compared to the more international posture of Ignitis or LTOU."
-        }
+      "differences": {
+        "tags": [
+          "City vs national focus",
+          "Energy vs mobility vs IoT",
+          "Depth of impact story"
+        ],
+        "summary": "Exergi and HOFOR clearly frame impact around a specific city (Stockholm/Copenhagen); Kauno energija, Gijos and Helen around local or national energy and district heating; EPSO-G and Ignitis emphasise national and regional energy security and green transition. LTG and Via Lietuva push sustainable mobility and connectivity, LTOU focuses on being a gateway and economic driver, and Teltonika’s impact is more tech- and connectivity-oriented than societal. Some brands (Ignitis, LTG, Exergi, HOFOR, Gijos) give more concrete climate, community or city-service angles; others keep impact more generic."
+      }
+    },
+    "target_talent_profile": {
+      "common": {
+        "tags": [
+          "Technical specialists needed",
+          "Mid-level professionals",
+          "Operations and field roles"
+        ],
+        "summary": "All brands have a strong demand for technical and operational talent: engineers, technicians, electricians, operators and similar roles. The core target group is clearly mid-level professionals with relevant education/experience, often in regulated infrastructure environments."
       },
-      "company_culture": {
-        "common": {
-          "tags": [
-            "Collaboration and support",
-            "Good work environment",
-            "Responsibility and trust"
-          ],
-          "summary": "Most brands describe cultures built on collaboration, supportive colleagues and responsible work with critical infrastructure. They regularly reference a good work environment, respect, safety and some degree of flexibility or work–life balance, even if only briefly."
-        },
-        "differences": {
-          "tags": [
-            "Formal vs high-paced",
-            "DEI maturity differences",
-            "‘Unique vibe’ positioning"
-          ],
-          "summary": "State-owned or municipal-linked players (EPSO-G, Ignitis, Kauno energija, LTG, LTOU, Via Lietuva, HOFOR) tend to describe more formal, value- and mission-driven cultures, while Teltonika comes across as more high-paced and performance/production-driven. LTOU and HOFOR articulate relatively mature DEI and wellbeing narratives; others mention inclusion more lightly or not at all. LTOU pushes a distinctive ‘aviation romance’ and #TheOnlyWorkingEnvironmentLikeThis, LTG uses ‘progress in movement’, whereas Exergi and HOFOR emphasise community and belonging; Helen’s culture is framed through transformation and cross-functional work rather than classic value statements."
-        }
+      "differences": {
+        "tags": [
+          "Breadth of role spectrum",
+          "Early-career focus uneven",
+          "Language and locality"
+        ],
+        "summary": "Ignitis, LTG, LTOU and HOFOR also actively target corporate and specialist roles (finance, HR, comms, leadership) and present themselves as multi-professional environments, whereas Kauno energija, Via Lietuva, Helen, Exergi, Gijos and Teltonika are more heavily skewed towards specific technical/production/project and data/IT profiles. LTG and HOFOR clearly mention students, apprentices and trainees; Exergi has strong youth/apprenticeship emphasis; Ignitis and EPSO-G hint at broader careers but less structurally. Several brands (Helen, Exergi, HOFOR, Gijos, Teltonika) are implicitly local-language-first, which narrows the talent pool compared to the more international posture of Ignitis or LTOU."
+      }
+    },
+    "company_culture": {
+      "common": {
+        "tags": [
+          "Collaboration and support",
+          "Good work environment",
+          "Responsibility and trust"
+        ],
+        "summary": "Most brands describe cultures built on collaboration, supportive colleagues and responsible work with critical infrastructure. They regularly reference a good work environment, respect, safety and some degree of flexibility or work–life balance, even if only briefly."
       },
-      "learning_possibilities": {
-        "common": {
-          "tags": [
-            "Training mentioned",
-            "Learning via complexity",
-            "Growth often implied"
-          ],
-          "summary": "Nearly every brand mentions training or development in some form, and all implicitly offer learning through complex, large-scale infrastructure projects. Growth is frequently promised in general terms, even where concrete structures are not described."
-        },
-        "differences": {
-          "tags": [
-            "Structured programs uneven",
-            "Early-talent pipelines",
-            "Detail vs vague promises"
-          ],
-          "summary": "Ignitis, LTG and HOFOR stand out with clearer or broader development narratives (programmes, internal mobility, internships, apprenticeships). Exergi’s strongest structure is around social apprenticeships and youth initiatives. LTOU and Via Lietuva promise training and growth but remain vague on mechanisms; Helen and Kauno energija lean heavily on learning through work with limited structural detail. Teltonika focuses on role-specific technical and process trainings more than broader career pathways. Overall, the maturity and specificity of learning offerings vary substantially, even though everyone claims ‘development’ at headline level."
+      "differences": {
+        "tags": [
+          "Formal vs high-paced",
+          "DEI and well-being maturity",
+          "‘Unique vibe’ positioning"
+        ],
+        "summary": "State-owned or municipal-linked players (EPSO-G, Ignitis, Kauno energija, LTG, LTOU, Via Lietuva, HOFOR, Gijos) tend to describe more formal, value- and mission-driven cultures, while Teltonika comes across as more high-paced and performance/production-driven. LTOU, HOFOR and Gijos articulate relatively mature DEI and wellbeing narratives; others mention inclusion more lightly or not at all. LTOU pushes a distinctive ‘aviation romance’ and #TheOnlyWorkingEnvironmentLikeThis, LTG uses ‘progress in movement’, whereas Exergi and HOFOR emphasise community and belonging; Helen’s culture is framed through transformation and cross-functional work, and Gijos differentiates itself through the 4-day week, psychological support and explicit “courage to act / we care about the world” values."
+      }
+    },
+    "learning_possibilities": {
+      "common": {
+        "tags": [
+          "Training mentioned",
+          "Learning via complexity",
+          "Growth often implied"
+        ],
+        "summary": "Nearly every brand mentions training or development in some form, and all implicitly offer learning through complex, large-scale infrastructure projects. Growth is frequently promised in general terms, even where concrete structures are not described."
+      },
+      "differences": {
+        "tags": [
+          "Structured programs uneven",
+          "Early-talent pipelines",
+          "Detail vs vague promises"
+        ],
+        "summary": "Ignitis, LTG and HOFOR stand out with clearer or broader development narratives (programmes, internal mobility, internships, apprenticeships). Exergi’s strongest structure is around social apprenticeships and youth initiatives. LTOU and Via Lietuva promise training and growth but remain vague on mechanisms; Helen and Kauno energija lean heavily on learning through work with limited structural detail. Teltonika focuses on role-specific technical and process trainings more than broader career pathways. Gijos clearly commits to funding required professional and periodic training, and offers strong on-the-job development in modern energy and data/IT contexts, but does not present a large, branded development system. Overall, the maturity and specificity of learning offerings vary substantially, even though everyone claims ‘development’ at headline level."
         }
       }
     }
   }
-  
+

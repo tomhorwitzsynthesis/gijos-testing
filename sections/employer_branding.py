@@ -456,7 +456,7 @@ def render():
     # Create tab labels - add comparison tab first if available
     tab_labels = []
     if comparison_data:
-        tab_labels.append("🔍 Comparison")
+        tab_labels.append("Comparison")
     tab_labels.extend(ordered_companies + extra_companies)
     
     if not tab_labels:

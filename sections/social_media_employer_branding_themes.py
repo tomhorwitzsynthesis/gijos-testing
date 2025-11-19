@@ -26,6 +26,9 @@ def _is_similar_to_any(text: str, existing_texts: list[str], threshold: float = 
     return False
 
 
+MIN_POSTS_FOR_OVERVIEW = 8
+
+
 @st.cache_data(ttl=0)
 def _load_all_employer_branding_data():
     """Load employer branding data once and compute all needed structures in a single pass."""
@@ -56,6 +59,7 @@ def _load_all_employer_branding_data():
         company_theme_pairs = []  # For company-theme counts DataFrame
         theme_company_counts = {}  # For theme -> company counts (theme_distribution)
         company_theme_examples = {}  # For storing examples by company and theme
+        posts_per_company = Counter()
         
         # Process each row once - single pass
         for _, row in df.iterrows():
@@ -64,6 +68,7 @@ def _load_all_employer_branding_data():
                 continue
             
             company_normalized = BRAND_NAME_MAPPING.get(str(company), str(company))
+            posts_per_company[company_normalized] += 1
             post_text = str(row.get('post_text', '')).strip() if 'post_text' in row and pd.notna(row.get('post_text')) else ""
             post_url = str(row.get('url', '')).strip() if 'url' in row and pd.notna(row.get('url')) else None
             
@@ -173,10 +178,10 @@ def _load_all_employer_branding_data():
             if top_5:
                 themes_by_company[company_normalized] = top_5
         
-        return themes_by_company, theme_distribution_dict, counts_df
+        return themes_by_company, theme_distribution_dict, counts_df, dict(posts_per_company)
     except Exception as e:
         st.error(f"Error loading employer branding data: {e}")
-        return {}, {}, pd.DataFrame()
+        return {}, {}, pd.DataFrame(), {}
 
 
 def _render_theme_distribution_charts(theme_distribution):
@@ -324,7 +329,7 @@ def _render_company_theme_stacked_bar(counts_df):
 
 def render():
     """Render employer branding themes overview with tabs per company showing top 5 themes."""
-    themes_data, theme_distribution, counts_df = _load_all_employer_branding_data()
+    themes_data, theme_distribution, counts_df, posts_per_company = _load_all_employer_branding_data()
     
     # First render the stacked bar chart
     _render_company_theme_stacked_bar(counts_df)
@@ -342,15 +347,16 @@ def render():
         return
     
     st.markdown("### Employer Branding Themes Overview by Company")
+    st.caption(f"Only companies with at least {MIN_POSTS_FOR_OVERVIEW} employer branding posts are shown below.")
     
     # Get company names and order them (prefer BRAND_ORDER if available)
-    companies = list(themes_data.keys())
+    companies = [c for c in themes_data.keys() if posts_per_company.get(c, 0) >= MIN_POSTS_FOR_OVERVIEW]
     ordered_companies = [c for c in BRAND_ORDER if c in companies]
     extra_companies = sorted([c for c in companies if c not in BRAND_ORDER])
     tab_labels = ordered_companies + extra_companies
     
     if not tab_labels:
-        st.info("No company data available.")
+        st.info(f"No companies have at least {MIN_POSTS_FOR_OVERVIEW} employer branding posts to show detailed themes.")
         return
     
     tabs = st.tabs(tab_labels)
@@ -363,7 +369,9 @@ def render():
                 st.info(f"No themes data available for {company}.")
                 continue
             
+            total_posts = posts_per_company.get(company, 0)
             st.subheader(f"{company} Employer Branding Themes")
+            st.markdown(f"<p style='color:#5F6B7C;'>Total posts analyzed: {total_posts}</p>", unsafe_allow_html=True)
             
             # Display each theme with metrics and examples stacked vertically
             for theme_item in themes:

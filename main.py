@@ -74,7 +74,7 @@ def render_banner():
 
 
 # --- Sidebar ---
-st.sidebar.title("📁 Navigation")
+st.sidebar.title("Navigation")
 section = st.sidebar.radio("Go to", [
     "Press Releases",
     "Social Media",
@@ -86,7 +86,7 @@ section = st.sidebar.radio("Go to", [
 
 # Font toggle in sidebar
 st.sidebar.divider()
-st.sidebar.subheader("⚙️ Settings")
+st.sidebar.subheader("Settings")
 st.sidebar.toggle(
     "Use Inter Font",
     value=st.session_state.use_inter_font,
@@ -100,7 +100,7 @@ render_banner()
 
 # --- Section Routing ---
 if section == "Press Releases":
-    st.title("📰 Press Release Dashboard")
+    st.title("Press Release Dashboard")
     render_pr_metrics()
     render_pr_archetype_matrix()
     render_matrix()
@@ -110,7 +110,7 @@ if section == "Press Releases":
     render_media_shares(mode="by_brand")
 
 elif section == "Social Media":
-    st.title("📱 Social Media Dashboard")
+    st.title("Social Media Dashboard")
     render_social_metrics(selected_platforms=["linkedin"])
     render_social_archetype_matrix()
     render_social_trends(selected_platforms=["linkedin"])
@@ -119,21 +119,21 @@ elif section == "Social Media":
     # render_chatkit()
 
 elif section == "Content Pillars":
-    st.title("🧱 Content Pillar Dashboard")
+    st.title("Content Pillar Dashboard")
     render_content_pillars()
     #st.info("This section is under construction")
 
 elif section == "Audience Affinity":
-    st.title("🎯 Audience Affinity Dashboard")
+    st.title("Audience Affinity Dashboard")
     render_audience_affinity()
     #st.info("This section is under construction")
 
 elif section == "Ad Intelligence":
-    st.title("📣 Ad Intelligence Dashboard")
+    st.title("Ad Intelligence Dashboard")
     render_ads_dashboard()
     render_ads_employer_branding_themes()
 
 elif section == "Employer Branding":
-    st.title("💼 Employer Branding Dashboard")
+    st.title("Employer Branding Dashboard")
     render_employer_branding_archetype_matrix()
     render_employer_branding()

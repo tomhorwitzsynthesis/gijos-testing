@@ -1,0 +1,51 @@
+{
+  "company": "Gijos",
+  "themes": {
+    "value_proposition": {
+      "tags": [
+        "4-day work week",
+        "Employee well-being focus",
+        "Flexible and remote work options",
+        "Modern public-sector employer"
+      ],
+      "summary": "Positions itself as a modern, employee-centric public-sector organisation offering a 4-day work week, long-term remote work opportunities from any EU country, strong focus on emotional and physical health, additional health insurance, partially reimbursed lunch, and flexible work arrangements designed to support sustainable work–life balance."
+    },
+    "purpose_impact": {
+      "tags": [
+        "Urban energy infrastructure",
+        "Climate impact through district heating",
+        "Responsible public service mission"
+      ],
+      "summary": "Frames its purpose around ensuring reliable, efficient and environmentally responsible heat production and infrastructure for Vilnius residents. Emphasises contributions to cleaner energy systems, reduced emissions, and the long-term development of urban energy technologies such as district heating, cooling and modernization projects."
+    },
+    "target_talent_profile": {
+      "tags": [
+        "Engineers and technical specialists",
+        "Energy sector and infrastructure roles",
+        "Data and digitalisation talent",
+        "Hands-on operations professionals"
+      ],
+      "summary": "Job ads focus on technical and engineering profiles (heat production operators, infrastructure specialists, project managers, building maintenance roles) alongside data engineers and digitalisation professionals. Roles assume domain knowledge in energy, engineering, IT, building systems or operations, with an expectation of independent problem-solving, initiative and responsibility."
+    },
+    "company_culture": {
+      "tags": [
+        "Courage to act",
+        "Care for the world",
+        "Supportive teams",
+        "Psychological safety and well-being",
+        "Empowerment and ownership"
+      ],
+      "summary": "Describes a value-driven culture built on initiative, accountability and a strong social mission. Emphasises trust, autonomy, supportive and friendly teams, psychological safety, and a consistent focus on well-being. The culture promotes innovation in energy infrastructure, encourages employees to act boldly, and reinforces responsibility toward customers, colleagues and the broader environment."
+    },
+    "learning_possibilities": {
+      "tags": [
+        "Professional training funded by employer",
+        "Technical certifications and periodic training",
+        "Fast professional growth",
+        "Exposure to modern energy systems"
+      ],
+      "summary": "Provides structured professional development, covering mandatory and periodic technical training, with the company funding required certifications. Roles highlight fast professional growth through direct exposure to complex energy technologies, digital platforms such as Microsoft Fabric, and hands-on work with critical city infrastructure. Learning appears practical, technical and role-specific, with less emphasis on formal internal academies."
+    }
+  }
+}
+  

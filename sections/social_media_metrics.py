@@ -443,7 +443,7 @@ def render(selected_platforms=None):
     </style>
     """, unsafe_allow_html=True)
     
-    st.subheader("📱 Social Media Brand Metrics")
+    st.subheader("Social Media Brand Metrics")
 
     if selected_platforms is None:
         selected_platforms = ["linkedin"]

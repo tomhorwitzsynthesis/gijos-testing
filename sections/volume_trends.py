@@ -70,7 +70,7 @@ def render(mode: str = "by_company"):
         st.error(f"Invalid mode '{mode}' in volume_trends.render(). Use 'by_company' or 'combined'.")
         return
 
-    st.subheader("📈 Weekly Media Mention Trends")
+    st.subheader("Weekly Media Mention Trends")
 
     # Determine min/max dates from all brands' data
     all_dates = []
@@ -130,7 +130,7 @@ def render(mode: str = "by_company"):
         for week, bmq in weekly_bmq.items():
             bmq_rows.append({"Week": week, "Company": brand, "BMQ": bmq})
 
-    tab1, tab2, tab3 = st.tabs(["📊 Volume", "👁️ Impressions", "⭐ BMQ"])
+    tab1, tab2, tab3 = st.tabs(["Volume", "Impressions", "BMQ"])
 
     with tab1:
         if not volume_rows:

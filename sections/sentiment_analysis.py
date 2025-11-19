@@ -62,7 +62,7 @@ def render(mode: str = "by_company"):
             z-index: 1001;
         }
     </style>
-    <h3>📊 Sentiment Distribution<span class="info-icon" title="Percentages may not add up to 100% due to rounding.">i</span></h3>
+    <h3>Sentiment Distribution<span class="info-icon" title="Percentages may not add up to 100% due to rounding.">i</span></h3>
     """, unsafe_allow_html=True)
 
     start_date, end_date = get_selected_date_range()
@@ -175,7 +175,7 @@ def render(mode: str = "by_company"):
 
     # --- Added: Negative sentiment article topics for Artea (no article numbers) ---
     if "Artea" in BRANDS:
-        with st.expander("🔎 Negative sentiment article topics for Artea", expanded=False):
+        with st.expander("Negative sentiment article topics for Artea", expanded=False):
             st.markdown(
                 """
 - **Client frustrations with Artea (multiple cases)**

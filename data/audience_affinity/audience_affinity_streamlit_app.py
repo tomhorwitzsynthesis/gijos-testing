@@ -13,7 +13,7 @@ try:
     gpt_summary = affinity_data.get("gpt_summary")
 
     if summary_df is None:
-        st.error("❌ No summary data available.")
+        st.error("No summary data available.")
     else:
         # --- Dropdown Selection ---
         view_option = st.selectbox(
@@ -21,7 +21,7 @@ try:
             ["Audience Averages", "Customers & End Users", "Job Seekers & Talent", "Professionals", "Decision Makers & Investors"]
         )
 
-        st.subheader(f"🔍 {view_option} View")
+        st.subheader(f"{view_option} View")
 
         # Audience-specific mapping
         audience_map = {
@@ -59,9 +59,9 @@ try:
         # --- GPT Summary ---
         if gpt_summary:
             st.markdown("---")
-            st.subheader("🧠 Summary")
+            st.subheader("Summary")
             st.markdown(gpt_summary)
 
 except Exception as e:
-    st.error("🚨 Streamlit app failed to load.")
+    st.error("Streamlit app failed to load.")
     st.exception(e)

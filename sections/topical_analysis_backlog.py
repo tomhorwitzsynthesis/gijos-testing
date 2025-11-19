@@ -11,7 +11,7 @@ def render() -> None:
     Render a display of top 5 content topics from Agility data.
     Tabs: Combined + per-brand, all with article counts.
     """
-    st.subheader("🧠 Key Communication Topics")
+    st.subheader("Key Communication Topics")
     start_date, end_date = get_selected_date_range()
 
     company_data = {}
@@ -40,8 +40,8 @@ def render() -> None:
     total_articles = sum(brand_counts.values())
 
     tabs = st.tabs(
-        [f"🌍 All Brands ({total_articles})"] +
-        [f"🏢 {brand} ({brand_counts.get(brand, 0)})" for brand in BRANDS]
+        [f"All Brands ({total_articles})"] +
+        [f"{brand} ({brand_counts.get(brand, 0)})" for brand in BRANDS]
     )
 
     # Tab 0: Combined

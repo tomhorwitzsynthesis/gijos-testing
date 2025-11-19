@@ -68,14 +68,18 @@ def load_agility_data(company_name: str):
     # First try to find the file name key from BRAND_NAME_MAPPING
     file_name_key = None
     for key, value in BRAND_NAME_MAPPING.items():
-        if value == company_name:
-            # Prefer lowercase/hyphenated versions for file names
-            if key.lower() == key or "-" in key:
-                file_name_key = key
-                break
-    
-    # If not found in mapping, convert to file name format
-    if file_name_key is None:
+        if value != company_name:
+            continue
+        # Always prefer keys that are already lowercase (case-safe for Linux paths)
+        if key.lower() == key:
+            file_name_key = key
+            break
+        # Otherwise keep the first match as a fallback while we keep searching
+        if file_name_key is None:
+            file_name_key = key
+
+    # If we couldn't find a lowercase mapping, fall back to a normalized variant
+    if file_name_key is None or file_name_key == company_name:
         file_name_key = company_name.lower().replace(" ", "-")
     
     path = os.path.join(DATA_ROOT, "agility", f"{file_name_key}_agility.xlsx")

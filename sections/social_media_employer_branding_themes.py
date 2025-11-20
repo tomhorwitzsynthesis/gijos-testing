@@ -263,6 +263,11 @@ def _render_company_theme_stacked_bar(counts_df):
     
     st.markdown("### Employer Branding Posts by Company and Theme")
     st.markdown("Compare total post volume and theme mix for each company.")
+    st.caption(
+        "Posts in this section were selected when they directly or indirectly "
+        "address employer branding topics. The three charts below focus solely "
+        "on these posts to show total volumes, theme mixes, and the split by theme."
+    )
     
     pivot_df = counts_df.pivot(index='Company', columns='Theme', values='Count').fillna(0)
     pivot_df['Total'] = pivot_df.sum(axis=1)

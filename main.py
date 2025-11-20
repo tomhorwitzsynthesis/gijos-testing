@@ -9,8 +9,12 @@ st.set_page_config(
 )
 
 # Initialize font preference in session state
-if 'use_inter_font' not in st.session_state:
-    st.session_state.use_inter_font = False
+# if 'use_inter_font' not in st.session_state:
+#     st.session_state.use_inter_font = False
+
+st.session_state.use_inter_font = True
+
+
 BASE_DIR = Path(__file__).resolve().parent
 BANNER_IMAGE = BASE_DIR / "visuals" / "synthesis_cover.jpg"
 
@@ -84,19 +88,19 @@ section = st.sidebar.radio("Go to", [
     "Employer Branding",
 ])
 
-# Font toggle in sidebar
-st.sidebar.divider()
-st.sidebar.subheader("Settings")
-st.sidebar.toggle(
-    "Use Inter Font",
-    value=st.session_state.use_inter_font,
-    key="use_inter_font",
-    help="Toggle between Inter font (Google Fonts) and Streamlit's default font"
-)
+# # Font toggle in sidebar
+# st.sidebar.divider()
+# st.sidebar.subheader("Settings")
+# st.sidebar.toggle(
+#     "Use Inter Font",
+#     value=st.session_state.use_inter_font,
+#     key="use_inter_font",
+#     help="Toggle between Inter font (Google Fonts) and Streamlit's default font"
+# )
 
 # --- Month Filter ---
 init_month_selector()  # Sets start_date / end_date globally
-render_banner()
+# render_banner()
 
 # --- Section Routing ---
 if section == "Press Releases":

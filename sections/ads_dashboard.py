@@ -584,6 +584,14 @@ def render():
     
     st.markdown("### Brand Summary")
 
+    # Add switch to exclude international brands
+    exclude_international = st.checkbox(
+        "Exclude international brands (Helen, HOFOR) from rankings and percentage calculations",
+        value=False,
+        key="ads_exclude_international"
+    )
+    exclude_brands = ["Helen", "HOFOR"] if exclude_international else []
+
     # Compute reach totals using the selected date range (df_filtered) instead of just the rolling window
     # This ensures all brands in the selected date range are included
     # First normalize brand names in df_filtered to ensure consistent matching
@@ -599,15 +607,17 @@ def render():
     else:
         reach_6m = pd.Series(dtype=float)
     
-    reach_mean = reach_6m.mean() if len(reach_6m) else 0
-    reach_ranks = reach_6m.rank(ascending=False, method="min") if len(reach_6m) else pd.Series(dtype=float)
-    reach_6m_map = reach_6m.to_dict()  # Now keyed by normalized brand names
+    # Filter out excluded brands for mean/rank calculation
+    reach_6m_filtered = reach_6m[~reach_6m.index.isin(exclude_brands)] if len(reach_6m) else pd.Series(dtype=float)
+    reach_mean = reach_6m_filtered.mean() if len(reach_6m_filtered) else (reach_6m.mean() if len(reach_6m) else 0)
+    reach_ranks = reach_6m_filtered.rank(ascending=False, method="min") if len(reach_6m_filtered) else pd.Series(dtype=float)
+    reach_6m_map = reach_6m.to_dict()  # Now keyed by normalized brand names (includes all brands)
     reach_norm_map = {
         _normalize_brand(brand): value
         for brand, value in reach_6m_map.items()
         if _normalize_brand(brand)
     }
-    reach_rank_map = reach_ranks.to_dict()
+    reach_rank_map = reach_ranks.to_dict()  # Only filtered brands have ranks
     reach_rank_norm_map = {
         _normalize_brand(brand): rank
         for brand, rank in reach_rank_map.items()
@@ -618,17 +628,32 @@ def render():
     strength_map = _load_brand_strength_from_ads_compos()
     if not strength_map:
         strength_map = _compute_brand_strength_from_agility()
+    bs_df_filtered = pd.DataFrame()  # Initialize outside if block
     if strength_map:
         bs_df = pd.DataFrame({'brand': list(strength_map.keys()), 'strength': list(strength_map.values())})
         bs_df['brand_norm'] = bs_df['brand'].apply(_normalize_brand)
-        bs_df['rank'] = bs_df['strength'].rank(ascending=False, method='min')
-        bs_mean = bs_df['strength'].mean() if len(bs_df) else 0
-        bs_df['delta_vs_mean_pct'] = ((bs_df['strength'] - bs_mean) / (bs_mean if bs_mean != 0 else 1)) * 100
+        # Filter out excluded brands for mean/rank calculation
+        bs_df_filtered = bs_df[~bs_df['brand'].isin(exclude_brands)].copy() if len(bs_df) else pd.DataFrame()
+        if len(bs_df_filtered):
+            bs_df_filtered['rank'] = bs_df_filtered['strength'].rank(ascending=False, method='min')
+            bs_mean = bs_df_filtered['strength'].mean()
+            rank_map = dict(zip(bs_df_filtered['brand'], bs_df_filtered['rank']))
+        else:
+            bs_mean = bs_df['strength'].mean() if len(bs_df) else 0
+            rank_map = {}
+        # Add ranks to all brands (None for excluded brands)
+        bs_df['rank'] = bs_df['brand'].apply(lambda b: int(rank_map.get(b)) if b in rank_map else None)
+        bs_df['delta_vs_mean_pct'] = bs_df.apply(
+            lambda row: ((row['strength'] - bs_mean) / (bs_mean if bs_mean != 0 else 1)) * 100 
+            if row['brand'] not in exclude_brands else None, 
+            axis=1
+        )
     else:
         bs_df = pd.DataFrame(columns=['brand', 'brand_norm', 'strength', 'rank', 'delta_vs_mean_pct'])
         bs_mean = 0
 
     creativity_df = load_creativity_rankings("ads")
+    creativity_df_filtered = pd.DataFrame()  # Initialize outside if block
     if not creativity_df.empty:
         # Normalize brand names from creativity file using BRAND_NAME_MAPPING
         creativity_df = creativity_df.copy()
@@ -658,9 +683,25 @@ def render():
         if not creativity_df.empty:
             creativity_df['rank'] = pd.to_numeric(creativity_df['rank'], errors='coerce')
             creativity_df['originality_score'] = pd.to_numeric(creativity_df['originality_score'], errors='coerce')
-            cre_mean = creativity_df['originality_score'].mean()
+            # Filter out excluded brands for mean/rank calculation
+            creativity_df_filtered = creativity_df[~creativity_df['brand_normalized'].isin(exclude_brands)].copy()
+            if len(creativity_df_filtered):
+                cre_mean = creativity_df_filtered['originality_score'].mean()
+                creativity_df_filtered['rank_filtered'] = creativity_df_filtered['originality_score'].rank(ascending=False, method='min')
+                rank_map_cre = dict(zip(creativity_df_filtered['brand_normalized'], creativity_df_filtered['rank_filtered']))
+            else:
+                cre_mean = creativity_df['originality_score'].mean()
+                rank_map_cre = {}
             denom = cre_mean if cre_mean != 0 else 1
-            creativity_df['delta_vs_mean_pct'] = ((creativity_df['originality_score'] - denom) / denom) * 100
+            creativity_df['delta_vs_mean_pct'] = creativity_df.apply(
+                lambda row: ((row['originality_score'] - cre_mean) / denom) * 100 
+                if row['brand_normalized'] not in exclude_brands else None,
+                axis=1
+            )
+            # Update ranks (None for excluded brands)
+            creativity_df['rank'] = creativity_df['brand_normalized'].apply(
+                lambda b: int(rank_map_cre.get(b)) if b in rank_map_cre else None
+            )
             # Use normalized brand names for consistency
             creativity_df['brand'] = creativity_df['brand_normalized']
 
@@ -713,16 +754,21 @@ def render():
                         total_reach = int(
                             reach_6m_map.get(brand_name, reach_norm_map.get(norm_brand, 0))
                         )
-                    delta_mean_pct = ((total_reach - (reach_mean if reach_mean != 0 else 1)) / (reach_mean if reach_mean != 0 else 1)) * 100 if reach_mean != 0 else 0
-                    rank_now = None
-                    if len(reach_ranks):
-                        rank_now = reach_rank_map.get(brand_name, reach_rank_norm_map.get(norm_brand))
+                    # Calculate delta and rank, excluding Helen/HOFOR if switch is on
+                    if brand_name in exclude_brands:
+                        delta_mean_pct = None
+                        rank_now = None
+                    else:
+                        delta_mean_pct = ((total_reach - (reach_mean if reach_mean != 0 else 1)) / (reach_mean if reach_mean != 0 else 1)) * 100 if reach_mean != 0 else 0
+                        rank_now = None
+                        if len(reach_ranks):
+                            rank_now = reach_rank_map.get(brand_name, reach_rank_norm_map.get(norm_brand))
                     _format_simple_metric_card(
                         label="Reach",
                         val=f"{total_reach:,}",
                         pct=delta_mean_pct,
                         rank_now=rank_now,
-                        total_ranks=len(reach_ranks) if len(reach_ranks) else None,
+                        total_ranks=len(reach_ranks) if len(reach_ranks) else (len(reach_6m_filtered) if len(reach_6m_filtered) else None),
                         metric_explanation="The total number of unique people who saw your ads. This metric indicates the potential audience size that your advertising campaigns have reached."
                     )
 
@@ -731,14 +777,14 @@ def render():
                     row = bs_df[bs_df['brand_norm'] == _normalize_brand(brand_name)]
                     if not row.empty:
                         strength = float(row['strength'].iloc[0])
-                        rank_bs = int(row['rank'].iloc[0])
-                        delta_bs = float(row['delta_vs_mean_pct'].iloc[0])
+                        rank_bs = int(row['rank'].iloc[0]) if pd.notna(row['rank'].iloc[0]) else None
+                        delta_bs = float(row['delta_vs_mean_pct'].iloc[0]) if pd.notna(row['delta_vs_mean_pct'].iloc[0]) else None
                         _format_simple_metric_card(
                             label="Brand Strength",
                             val=f"{strength:.1f}%",
                             pct=delta_bs,
                             rank_now=rank_bs,
-                            total_ranks=len(bs_df),
+                            total_ranks=len(bs_df_filtered) if len(bs_df_filtered) else len(bs_df),
                             metric_explanation="A percentage representing how consistently your brand communicates through a dominant brand archetype. Higher percentages indicate stronger, more consistent brand messaging and positioning."
                         )
                     else:
@@ -766,7 +812,7 @@ def render():
                             val=f"{score:.2f}",
                             pct=delta_cre,
                             rank_now=rank_cre,
-                            total_ranks=creativity_df['brand'].nunique() if not creativity_df.empty else None,
+                            total_ranks=creativity_df_filtered['brand'].nunique() if not creativity_df.empty and len(creativity_df_filtered) else (creativity_df['brand'].nunique() if not creativity_df.empty else None),
                             metric_explanation="A score measuring the originality and uniqueness of your ad content. Higher scores indicate more creative and distinctive messaging that stands out from competitors."
                         )
                     else:

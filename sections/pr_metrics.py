@@ -84,11 +84,16 @@ def _load_press_release_frames():
     return frames
 
 
-def _compute_impressions_stats(frames: dict) -> Tuple[Dict[str, dict], int]:
+def _compute_impressions_stats(frames: dict, exclude_brands: list = None) -> Tuple[Dict[str, dict], int]:
     if not frames:
         return {}, 0
+    if exclude_brands is None:
+        exclude_brands = []
     impression_map = {}
     for brand, df in frames.items():
+        # Skip excluded brands
+        if brand in exclude_brands:
+            continue
         windowed = _rolling_window(df, "Published Date")
         if windowed.empty or "Impressions" not in windowed.columns:
             continue
@@ -97,7 +102,9 @@ def _compute_impressions_stats(frames: dict) -> Tuple[Dict[str, dict], int]:
     if not impression_map:
         return {}, 0
     series = pd.Series(impression_map)
+    # Calculate mean excluding the excluded brands
     impressions_mean = series.mean()
+    # Calculate ranks excluding the excluded brands
     impressions_ranks = series.rank(ascending=False, method="min")
     stats = {}
     for brand_name, value in series.items():
@@ -110,14 +117,32 @@ def _compute_impressions_stats(frames: dict) -> Tuple[Dict[str, dict], int]:
             "delta": float(delta),
             "rank": int(rank_now) if pd.notna(rank_now) else None,
         }
+    # Also add excluded brands with their values but without ranking/delta from filtered mean
+    for brand, df in frames.items():
+        if brand in exclude_brands:
+            windowed = _rolling_window(df, "Published Date")
+            if windowed.empty or "Impressions" not in windowed.columns:
+                continue
+            total_impressions = windowed["Impressions"].sum()
+            norm = _normalize_brand(brand)
+            stats[norm] = {
+                "value": float(total_impressions),
+                "delta": None,  # No delta calculation for excluded brands
+                "rank": None,   # No rank for excluded brands
+            }
     return stats, len(series)
 
 
-def _compute_brand_strength_stats(frames: dict) -> Tuple[Dict[str, dict], int]:
+def _compute_brand_strength_stats(frames: dict, exclude_brands: list = None) -> Tuple[Dict[str, dict], int]:
     if not frames:
         return {}, 0
+    if exclude_brands is None:
+        exclude_brands = []
     strength_map = {}
     for brand, df in frames.items():
+        # Skip excluded brands
+        if brand in exclude_brands:
+            continue
         if "Top Archetype" not in df.columns:
             continue
         counts = df["Top Archetype"].dropna().value_counts()
@@ -138,39 +163,72 @@ def _compute_brand_strength_stats(frames: dict) -> Tuple[Dict[str, dict], int]:
             "delta": ((value - mean_val) / denom) * 100 if mean_val else 0,
             "rank": int(ranks[brand]),
         }
+    # Also add excluded brands with their values but without ranking/delta from filtered mean
+    for brand, df in frames.items():
+        if brand in exclude_brands:
+            if "Top Archetype" not in df.columns:
+                continue
+            counts = df["Top Archetype"].dropna().value_counts()
+            total = counts.sum()
+            if total > 0:
+                norm = _normalize_brand(brand)
+                stats[norm] = {
+                    "value": float(counts.iloc[0] / total * 100),
+                    "delta": None,  # No delta calculation for excluded brands
+                    "rank": None,   # No rank for excluded brands
+                }
     return stats, len(series)
 
 
-def _compute_creativity_stats() -> Tuple[Dict[str, dict], int, Dict[str, dict]]:
+def _compute_creativity_stats(exclude_brands: list = None) -> Tuple[Dict[str, dict], int, Dict[str, dict]]:
+    if exclude_brands is None:
+        exclude_brands = []
     df = load_creativity_rankings("pr")
     if df is None or df.empty:
         return {}, 0, {}
     df = df.copy()
     df["brand_norm"] = df["brand"].apply(_normalize_brand)
+    # Filter out excluded brands for mean/rank calculation
+    df_filtered = df[~df["brand"].isin(exclude_brands)].copy()
     df["rank"] = pd.to_numeric(df["rank"], errors="coerce")
     df["originality_score"] = pd.to_numeric(df["originality_score"], errors="coerce")
     df = df.dropna(subset=["originality_score"])
     if df.empty:
         return {}, 0, {}
-    mean_val = df["originality_score"].mean()
+    # Use filtered data for mean calculation
+    df_filtered = df_filtered.dropna(subset=["originality_score"])
+    if df_filtered.empty:
+        mean_val = df["originality_score"].mean()
+    else:
+        mean_val = df_filtered["originality_score"].mean()
     denom = mean_val if mean_val != 0 else 1
+    # Recalculate ranks using only filtered brands
+    if not df_filtered.empty:
+        df_filtered = df_filtered.copy()
+        df_filtered["rank_filtered"] = df_filtered["originality_score"].rank(ascending=False, method="min")
+        rank_map = dict(zip(df_filtered["brand"], df_filtered["rank_filtered"]))
+    else:
+        rank_map = {}
     df["delta_vs_mean_pct"] = ((df["originality_score"] - mean_val) / denom) * 100
     stats = {}
     details = {}
     for _, row in df.iterrows():
+        brand = row["brand"]
+        is_excluded = brand in exclude_brands
         details[row["brand_norm"]] = {
-            "brand": row["brand"],
-            "rank": int(row["rank"]) if not pd.isna(row["rank"]) else None,
+            "brand": brand,
+            "rank": int(rank_map.get(brand, row["rank"])) if not pd.isna(rank_map.get(brand, row["rank"])) and not is_excluded else None,
             "score": float(row["originality_score"]),
             "justification": row.get("justification", ""),
             "examples": row.get("examples", ""),
         }
         stats[row["brand_norm"]] = {
             "score": float(row["originality_score"]),
-            "delta": float(row["delta_vs_mean_pct"]) if not pd.isna(row["delta_vs_mean_pct"]) else None,
-            "rank": int(row["rank"]) if not pd.isna(row["rank"]) else None,
+            "delta": float(row["delta_vs_mean_pct"]) if not pd.isna(row["delta_vs_mean_pct"]) and not is_excluded else None,
+            "rank": int(rank_map.get(brand, row["rank"])) if not pd.isna(rank_map.get(brand, row["rank"])) and not is_excluded else None,
         }
-    return stats, df["brand"].nunique(), details
+    filtered_count = df_filtered["brand"].nunique() if not df_filtered.empty else df["brand"].nunique()
+    return stats, filtered_count, details
 
 
 def _render_creativity_block(display_name: str, detail: Dict[str, object]) -> None:
@@ -371,6 +429,14 @@ def render():
     
     st.subheader("Press Release Brand Metrics")
 
+    # Add switch to exclude international brands
+    exclude_international = st.checkbox(
+        "Exclude international brands (Helen, HOFOR) from rankings and percentage calculations",
+        value=False,
+        key="pr_exclude_international"
+    )
+    exclude_brands = ["Helen", "HOFOR"] if exclude_international else []
+
     start_date, end_date = get_selected_date_range()
     _render_summary_tabs(load_brand_summaries("pr"))
     frames = _load_press_release_frames()
@@ -378,9 +444,9 @@ def render():
         st.info("No press release data available.")
         return
 
-    impressions_stats, impressions_total = _compute_impressions_stats(frames)
-    strength_stats, strength_total = _compute_brand_strength_stats(frames)
-    creativity_stats, creativity_total, creativity_details = _compute_creativity_stats()
+    impressions_stats, impressions_total = _compute_impressions_stats(frames, exclude_brands)
+    strength_stats, strength_total = _compute_brand_strength_stats(frames, exclude_brands)
+    creativity_stats, creativity_total, creativity_details = _compute_creativity_stats(exclude_brands)
 
     available_brands = []
     seen = set()

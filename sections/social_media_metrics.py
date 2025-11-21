@@ -141,11 +141,16 @@ def _load_social_brand_strength():
     return strength
 
 
-def _compute_engagement_stats(frames: dict) -> Tuple[Dict[str, dict], int]:
+def _compute_engagement_stats(frames: dict, exclude_brands: list = None) -> Tuple[Dict[str, dict], int]:
     if not frames:
         return {}, 0
+    if exclude_brands is None:
+        exclude_brands = []
     engagement_map = {}
     for brand, df in frames.items():
+        # Skip excluded brands
+        if brand in exclude_brands:
+            continue
         windowed = _rolling_window(df, "Published Date")
         if windowed.empty:
             continue
@@ -165,14 +170,33 @@ def _compute_engagement_stats(frames: dict) -> Tuple[Dict[str, dict], int]:
             "delta": ((value - mean_val) / denom) * 100 if mean_val else 0,
             "rank": int(ranks[brand]),
         }
+    # Also add excluded brands with their values but without ranking/delta from filtered mean
+    for brand, df in frames.items():
+        if brand in exclude_brands:
+            windowed = _rolling_window(df, "Published Date")
+            if windowed.empty:
+                continue
+            total_engagement = windowed["Engagement"].sum()
+            norm = _normalize_brand(brand)
+            stats[norm] = {
+                "value": float(total_engagement),
+                "delta": None,  # No delta calculation for excluded brands
+                "rank": None,   # No rank for excluded brands
+            }
     return stats, len(series)
 
 
-def _compute_brand_strength_stats() -> Tuple[Dict[str, dict], int]:
+def _compute_brand_strength_stats(exclude_brands: list = None) -> Tuple[Dict[str, dict], int]:
+    if exclude_brands is None:
+        exclude_brands = []
     strength_map = _load_social_brand_strength()
     if not strength_map:
         return {}, 0
-    series = pd.Series(strength_map)
+    # Filter out excluded brands for mean/rank calculation
+    strength_map_filtered = {k: v for k, v in strength_map.items() if k not in exclude_brands}
+    if not strength_map_filtered:
+        return {}, 0
+    series = pd.Series(strength_map_filtered)
     ranks = series.rank(ascending=False, method="min")
     mean_val = series.mean()
     denom = mean_val if mean_val != 0 else 1
@@ -184,10 +208,21 @@ def _compute_brand_strength_stats() -> Tuple[Dict[str, dict], int]:
             "delta": ((value - mean_val) / denom) * 100 if mean_val else 0,
             "rank": int(ranks[brand]),
         }
+    # Also add excluded brands with their values but without ranking/delta from filtered mean
+    for brand, value in strength_map.items():
+        if brand in exclude_brands:
+            norm = _normalize_brand(brand)
+            stats[norm] = {
+                "value": float(value),
+                "delta": None,  # No delta calculation for excluded brands
+                "rank": None,   # No rank for excluded brands
+            }
     return stats, len(series)
 
 
-def _compute_creativity_stats() -> Tuple[Dict[str, dict], int, Dict[str, dict]]:
+def _compute_creativity_stats(exclude_brands: list = None) -> Tuple[Dict[str, dict], int, Dict[str, dict]]:
+    if exclude_brands is None:
+        exclude_brands = []
     df = load_creativity_rankings("social_media")
     if df is None or df.empty:
         return {}, 0, {}
@@ -204,25 +239,40 @@ def _compute_creativity_stats() -> Tuple[Dict[str, dict], int, Dict[str, dict]]:
     df = df.dropna(subset=["originality_score"])
     if df.empty:
         return {}, 0, {}
-    mean_val = df["originality_score"].mean()
+    # Filter out excluded brands for mean/rank calculation
+    df_filtered = df[~df["brand_normalized"].isin(exclude_brands)].copy()
+    if df_filtered.empty:
+        mean_val = df["originality_score"].mean()
+    else:
+        mean_val = df_filtered["originality_score"].mean()
     denom = mean_val if mean_val != 0 else 1
+    # Recalculate ranks using only filtered brands
+    if not df_filtered.empty:
+        df_filtered = df_filtered.copy()
+        df_filtered["rank_filtered"] = df_filtered["originality_score"].rank(ascending=False, method="min")
+        rank_map = dict(zip(df_filtered["brand_normalized"], df_filtered["rank_filtered"]))
+    else:
+        rank_map = {}
     df["delta_vs_mean_pct"] = ((df["originality_score"] - mean_val) / denom) * 100
     stats = {}
     details = {}
     for _, row in df.iterrows():
+        brand_norm = row["brand_normalized"]
+        is_excluded = brand_norm in exclude_brands
         details[row["brand_norm"]] = {
-            "brand": row["brand_normalized"],  # Use normalized brand name
-            "rank": int(row["rank"]) if not pd.isna(row["rank"]) else None,
+            "brand": brand_norm,  # Use normalized brand name
+            "rank": int(rank_map.get(brand_norm, row["rank"])) if not pd.isna(rank_map.get(brand_norm, row["rank"])) and not is_excluded else None,
             "score": float(row["originality_score"]),
             "justification": row.get("justification", ""),
             "examples": row.get("examples", ""),
         }
         stats[row["brand_norm"]] = {
             "score": float(row["originality_score"]),
-            "delta": float(row["delta_vs_mean_pct"]) if not pd.isna(row["delta_vs_mean_pct"]) else None,
-            "rank": int(row["rank"]) if not pd.isna(row["rank"]) else None,
+            "delta": float(row["delta_vs_mean_pct"]) if not pd.isna(row["delta_vs_mean_pct"]) and not is_excluded else None,
+            "rank": int(rank_map.get(brand_norm, row["rank"])) if not pd.isna(rank_map.get(brand_norm, row["rank"])) and not is_excluded else None,
         }
-    return stats, df["brand_normalized"].nunique(), details
+    filtered_count = df_filtered["brand_normalized"].nunique() if not df_filtered.empty else df["brand_normalized"].nunique()
+    return stats, filtered_count, details
 
 
 def _render_creativity_block(display_name: str, detail: Dict[str, object]) -> None:
@@ -445,6 +495,14 @@ def render(selected_platforms=None):
     
     st.subheader("Social Media Brand Metrics")
 
+    # Add switch to exclude international brands
+    exclude_international = st.checkbox(
+        "Exclude international brands (Helen, HOFOR) from rankings and percentage calculations",
+        value=False,
+        key="social_exclude_international"
+    )
+    exclude_brands = ["Helen", "HOFOR"] if exclude_international else []
+
     if selected_platforms is None:
         selected_platforms = ["linkedin"]
     selected_platforms = [p.lower() for p in selected_platforms]
@@ -456,9 +514,9 @@ def render(selected_platforms=None):
         st.info("No social media data available.")
         return
 
-    engagement_stats, engagement_total = _compute_engagement_stats(frames)
-    strength_stats, strength_total = _compute_brand_strength_stats()
-    creativity_stats, creativity_total, creativity_details = _compute_creativity_stats()
+    engagement_stats, engagement_total = _compute_engagement_stats(frames, exclude_brands)
+    strength_stats, strength_total = _compute_brand_strength_stats(exclude_brands)
+    creativity_stats, creativity_total, creativity_details = _compute_creativity_stats(exclude_brands)
 
     available_brands = []
     seen = set()

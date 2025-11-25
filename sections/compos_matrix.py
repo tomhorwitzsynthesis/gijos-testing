@@ -52,8 +52,8 @@ def render():
         title="Company Positioning by Volume & Quality",
     )
 
-    # Use Streamlit green color (#2FB375) for all dots
-    fig.update_traces(marker=dict(size=12, opacity=0.8, color="#2FB375"))
+    # Use new primary accent color (#00C35F) for all dots
+    fig.update_traces(marker=dict(size=12, opacity=0.8, color="#00C35F"))
 
     # Calculate adaptive offset based on quality range
     quality_range = df_summary["Quality"].max() - df_summary["Quality"].min()

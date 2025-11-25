@@ -122,7 +122,7 @@ def render():
                             barmode="group",
                             labels={"Percentage": "Percentage (%)", "Brand": "Company"},
                             title=f"{audience_name} - Detailed Metrics Breakdown",
-                            color_discrete_sequence=px.colors.qualitative.Set3,
+                            color_discrete_sequence=["#18958F", "#F9A051", "#A40E4C"],
                         )
                         fig_detail.update_layout(
                             yaxis={"categoryorder": "total ascending"},
@@ -197,11 +197,12 @@ def render():
             st.markdown("""
             <style>
                 .summary-box {
-                    background-color: #E8F5E9;
-                    border: 2px solid #2FB375;
+                    background-color: #000000;
+                    border: 2px solid #000000;
                     border-radius: 8px;
                     padding: 20px;
                     margin: 10px 0;
+                    color: #FFFFFF;
                 }
             </style>
             """, unsafe_allow_html=True)

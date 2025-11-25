@@ -64,15 +64,21 @@ BRAND_NAME_MAPPING = {
 }
 
 BRAND_COLORS = {
-    "EPSO-G": "#4083B3",  # Blue
-    "Exergi": "#2FB375",  # Teal/Green
-    "Gijos": "#7BC86C",  # Fresh green
-    "Helen": "#FF6B35",  # Orange
-    "HOFOR": "#4ECDC4",  # Turquoise
-    "Ignitis": "#FFE66D",  # Yellow
-    "Kauno Energija": "#95E1D3",  # Mint Green
-    "LTG": "#F38181",  # Coral
-    "LTOU": "#AA96DA",  # Purple
-    "Teltonika": "#FCBAD3",  # Pink
-    "Via Lietuva": "#A8D8EA",  # Light Blue
+    "EPSO-G": "#18958F",  # Blue
+    "Exergi": "#3066BE",  # Teal/Green
+    "Gijos": "#3D348B",  # Fresh green
+    "Helen": "#71216C",  # Orange
+    "HOFOR": "#A40E4C",  # Turquoise
+    "Ignitis": "#FE5F55",  # Yellow
+    "Kauno Energija": "#F9A051",  # Mint Green
+    "LTG": "#F4E04D",  # Coral
+    "LTOU": "#18958F",  # Purple
+    "Teltonika": "#3066BE",  # Pink
+    "Via Lietuva": "#71216C",  # Light Blue
 }
+
+# Global UI color palette
+PRIMARY_ACCENT_COLOR = "#00C35F"
+POSITIVE_HIGHLIGHT_COLOR = "#0E34A0"
+NEGATIVE_HIGHLIGHT_COLOR = "#F25757"
+NEUTRAL_HIGHLIGHT_COLOR = "#6B7280"

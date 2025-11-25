@@ -23,7 +23,7 @@ def render(mode: str = "by_company"):
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background-color: #2FB375;
+            background-color: #00C35F;
             color: white;
             text-align: center;
             line-height: 16px;
@@ -158,9 +158,9 @@ def render(mode: str = "by_company"):
         text="Text",
         barmode="stack",
         color_discrete_map={
-            "Positive": "#1FD081",  # Brighter green matching archetype matrix dots
-            "Neutral": "#A0A0A0",  # Lighter grey (less black)
-            "Negative": "#D9777F"  # Softer coral/muted red
+            "Positive": "#0E34A0",
+            "Neutral": "#000000",
+            "Negative": "#F25757"
         },
         title=""  # Title removed since it's now in the subheader
     )

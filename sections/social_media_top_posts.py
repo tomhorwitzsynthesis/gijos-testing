@@ -21,9 +21,9 @@ def _render_post_cards(posts_df: pd.DataFrame):
         post_preview = html.escape(str(row.get("PostPreview", "")))
         url = row.get("URL")
         if url:
-            post_html = f'<a href="{html.escape(str(url))}" target="_blank" style="color:#2FB375; text-decoration:none;">"{post_preview}"</a>'
+            post_html = f'<a href="{html.escape(str(url))}" target="_blank" style="color:#00C35F; text-decoration:none;">"{post_preview}"</a>'
         else:
-            post_html = f'"{post_preview}"'
+            post_html = f'<span style="color:#00C35F;">"{post_preview}"</span>'
 
         card_html = (
             f'<div style="border:1px solid #ddd; border-radius:12px; padding:18px; margin-bottom:16px; '
@@ -35,11 +35,11 @@ def _render_post_cards(posts_df: pd.DataFrame):
             f'<p style="margin:4px 0 0; color:#111827;">{date}</p></div>'
             f'<div style="text-align:right;">'
             f'<p style="margin:0; font-size:0.9em; color:#6B7280;">Engagement</p>'
-            f'<p style="margin:4px 0; font-size:1.8em; color:#2FB375; font-weight:700;">{engagement:,}</p>'
+            f'<p style="margin:4px 0; font-size:1.8em; color:#0E34A0; font-weight:700;">{engagement:,}</p>'
             f'</div>'
             f'</div>'
             f'<div style="margin-top:12px;">'
-            f'<p style="margin:0; font-size:0.95em; color:#374151;">{post_html}</p>'
+            f'<p style="margin:0; font-size:0.95em; color:#00C35F;">{post_html}</p>'
             f'</div>'
             f'</div>'
         )

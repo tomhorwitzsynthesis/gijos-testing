@@ -5,7 +5,7 @@ import os
 import re
 import unicodedata
 from pathlib import Path
-from utils.config import BRAND_NAME_MAPPING, DATA_ROOT, BRAND_COLORS
+from utils.config import BRAND_NAME_MAPPING, DATA_ROOT, BRAND_COLORS, PRIMARY_ACCENT_COLOR
 
 BRAND_ORDER = list(BRAND_COLORS.keys())
 
@@ -173,7 +173,7 @@ def _render_archetype_matrix_binary(archetypes_set):
             
             # Green if present, white if not
             if is_present:
-                bg_hex = "#1FB375"  # Strong green
+                bg_hex = PRIMARY_ACCENT_COLOR  # Strong green accent
                 text_color = "#FFFFFF"
             else:
                 bg_hex = "#FFFFFF"
@@ -211,7 +211,8 @@ def _render_archetype_matrix_comparison(archetype_companies_map, total_companies
             
             # Generate gradient color
             base_rgb = (245, 255, 249)  # light mint
-            peak_rgb = (31, 179, 117)   # strong green
+            peak_hex = PRIMARY_ACCENT_COLOR.lstrip("#")
+            peak_rgb = tuple(int(peak_hex[i : i + 2], 16) for i in (0, 2, 4))
             ratio = intensity / 100.0
             r = round(base_rgb[0] + (peak_rgb[0] - base_rgb[0]) * ratio)
             g = round(base_rgb[1] + (peak_rgb[1] - base_rgb[1]) * ratio)

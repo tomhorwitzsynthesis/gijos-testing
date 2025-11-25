@@ -4,7 +4,7 @@ import os
 import glob
 import re
 import unicodedata
-from utils.config import BRANDS, BRAND_NAME_MAPPING, DATA_ROOT
+from utils.config import BRANDS, BRAND_NAME_MAPPING, DATA_ROOT, PRIMARY_ACCENT_COLOR
 from utils.file_io import load_agility_data
 
 ARCHETYPE_DISPLAY_ORDER = [
@@ -93,7 +93,8 @@ def _green_gradient(pct: float) -> tuple[str, str]:
         value = 0.0
     value = max(0.0, min(100.0, value))
     base_rgb = (245, 255, 249)  # light mint
-    peak_rgb = (31, 179, 117)   # strong green
+    peak_hex = PRIMARY_ACCENT_COLOR.lstrip("#")
+    peak_rgb = tuple(int(peak_hex[i : i + 2], 16) for i in (0, 2, 4))
     ratio = value / 100.0
     r = round(base_rgb[0] + (peak_rgb[0] - base_rgb[0]) * ratio)
     g = round(base_rgb[1] + (peak_rgb[1] - base_rgb[1]) * ratio)

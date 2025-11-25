@@ -5,7 +5,15 @@ import glob
 import streamlit as st
 import pandas as pd
 
-from utils.config import BRAND_NAME_MAPPING, DATA_ROOT, BRANDS
+from utils.config import (
+    BRAND_NAME_MAPPING,
+    DATA_ROOT,
+    BRANDS,
+    PRIMARY_ACCENT_COLOR,
+    POSITIVE_HIGHLIGHT_COLOR,
+    NEGATIVE_HIGHLIGHT_COLOR,
+    NEUTRAL_HIGHLIGHT_COLOR,
+)
 from utils.date_utils import get_selected_date_range
 from utils.file_io import load_social_data, load_creativity_rankings, load_brand_summaries
 
@@ -22,15 +30,21 @@ def _normalize_brand(name: str) -> str:
 
 
 def _format_simple_metric_card(label, val, pct=None, rank_now=None, total_ranks=None, metric_explanation=None):
-    rank_color = "gray"
+    rank_color = NEUTRAL_HIGHLIGHT_COLOR
     if rank_now is not None and total_ranks:
         if int(rank_now) == 1:
-            rank_color = "green"
+            rank_color = POSITIVE_HIGHLIGHT_COLOR
         elif int(rank_now) == int(total_ranks):
-            rank_color = "red"
+            rank_color = NEGATIVE_HIGHLIGHT_COLOR
     pct_color = None
     if pct is not None:
-        pct_color = "green" if pct > 0 else "red" if pct < 0 else "gray"
+        pct_color = (
+            POSITIVE_HIGHLIGHT_COLOR
+            if pct > 0
+            else NEGATIVE_HIGHLIGHT_COLOR
+            if pct < 0
+            else NEUTRAL_HIGHLIGHT_COLOR
+        )
     # Add tooltip to percentage change
     pct_tooltip = '<span class="pct-tooltip-icon" data-tooltip="Difference from the average metric">?</span>' if pct is not None else ''
     pct_html = f'<p style="margin:0; color:{pct_color}; display:inline-flex; align-items:center; gap:4px;">Δ {pct:.1f}%{pct_tooltip}</p>' if pct is not None else ''
@@ -293,12 +307,13 @@ def _render_creativity_block(display_name: str, detail: Dict[str, object]) -> No
     examples_html = ""
     if examples:
         examples_html = f'<p style="margin:8px 0 0; color:#444;">Examples: {examples}</p>'
+    base_text = "#F5F5F5"
     st.markdown(
         f"""
-        <div style="border:1px solid #ddd; border-radius:10px; padding:15px; margin-top:15px; margin-bottom:10px;">
-            <h5 style="margin:0;">{headline}</h5>
-            {'<p style="margin:8px 0 0; color:#444;">' + justification + '</p>' if justification else ''}
-            {examples_html}
+        <div style="border:1px solid #000000; border-radius:12px; padding:18px; margin-top:15px; margin-bottom:10px; background-color:#000000; color:#FFFFFF;">
+            <h5 style="margin:0; color:#FFFFFF;">{headline}</h5>
+            {f'<p style="margin:8px 0 0; color:{base_text};">{justification}</p>' if justification else ''}
+            {examples_html.replace("#444", base_text)}
         </div>
         """,
         unsafe_allow_html=True,
@@ -362,12 +377,15 @@ def _render_summary_tabs(summary_records):
     st.markdown("### Executive Summary")
     tabs = st.tabs(tab_labels)
     card_style = (
-        "border:1px solid #2FB375; border-left:6px solid #2FB375;"
+        f"border:1px solid {PRIMARY_ACCENT_COLOR}; border-left:6px solid {PRIMARY_ACCENT_COLOR};"
         "border-radius:10px; padding:15px; margin-top:10px; margin-bottom:10px;"
         "background-color:#F5FFF9; box-shadow:0 2px 4px rgba(0,0,0,0.08);"
     )
     text_style = "margin:0; color:#1F2933; line-height:1.6;"
-    meta_style = "margin:0 0 8px 0; color:#2FB375; font-size:0.85em; font-weight:600; text-transform:uppercase;"
+    meta_style = (
+        f"margin:0 0 8px 0; color:{PRIMARY_ACCENT_COLOR}; font-size:0.85em; "
+        "font-weight:600; text-transform:uppercase;"
+    )
     for idx, brand in enumerate(tab_labels):
         with tabs[idx]:
             summary_text = str(brand_to_summary.get(brand, "")).strip()
@@ -392,14 +410,15 @@ def _render_summary_tabs(summary_records):
 
 def render(selected_platforms=None):
     # Add tooltip CSS
-    st.markdown("""
+    st.markdown(
+        f"""
     <style>
-        .metric-tooltip-icon {
+        .metric-tooltip-icon {{
             display: inline-block;
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background-color: #2FB375;
+            background-color: {PRIMARY_ACCENT_COLOR};
             color: white;
             text-align: center;
             line-height: 16px;
@@ -409,8 +428,8 @@ def render(selected_platforms=None):
             margin-left: 6px;
             vertical-align: middle;
             position: relative;
-        }
-        .metric-tooltip-icon:hover::after {
+        }}
+        .metric-tooltip-icon:hover::after {{
             content: attr(data-explanation);
             white-space: pre-line;
             word-wrap: break-word;
@@ -431,8 +450,8 @@ def render(selected_platforms=None):
             min-width: 200px;
             text-align: left;
             line-height: 1.5;
-        }
-        .metric-tooltip-icon:hover::before {
+        }}
+        .metric-tooltip-icon:hover::before {{
             content: "";
             position: absolute;
             bottom: 100%;
@@ -442,8 +461,8 @@ def render(selected_platforms=None):
             border-top-color: #333;
             margin-bottom: 2px;
             z-index: 1001;
-        }
-        .pct-tooltip-icon {
+        }}
+        .pct-tooltip-icon {{
             display: inline-block;
             width: 14px;
             height: 14px;
@@ -459,11 +478,11 @@ def render(selected_platforms=None):
             vertical-align: middle;
             position: relative;
             opacity: 0.7;
-        }
-        .pct-tooltip-icon:hover {
+        }}
+        .pct-tooltip-icon:hover {{
             opacity: 1;
-        }
-        .pct-tooltip-icon:hover::after {
+        }}
+        .pct-tooltip-icon:hover::after {{
             content: "Difference from the average metric";
             position: absolute;
             bottom: 100%;
@@ -478,8 +497,8 @@ def render(selected_platforms=None):
             margin-bottom: 8px;
             z-index: 1000;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-        .pct-tooltip-icon:hover::before {
+        }}
+        .pct-tooltip-icon:hover::before {{
             content: "";
             position: absolute;
             bottom: 100%;
@@ -489,9 +508,11 @@ def render(selected_platforms=None):
             border-top-color: #333;
             margin-bottom: 2px;
             z-index: 1001;
-        }
+        }}
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
     
     st.subheader("Social Media Brand Metrics")
 

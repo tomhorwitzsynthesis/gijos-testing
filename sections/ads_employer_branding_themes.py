@@ -6,7 +6,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 from collections import Counter
 from difflib import SequenceMatcher
-from utils.config import BRAND_NAME_MAPPING, DATA_ROOT, BRAND_COLORS
+from utils.config import (
+    BRAND_NAME_MAPPING,
+    DATA_ROOT,
+    BRAND_COLORS,
+    PRIMARY_ACCENT_COLOR,
+    POSITIVE_HIGHLIGHT_COLOR,
+)
 
 BRAND_ORDER = list(BRAND_COLORS.keys())
 MIN_ADS_FOR_OVERVIEW = 8
@@ -302,7 +308,7 @@ def _render_company_theme_stacked_bar(counts_df):
             x=totals.index,
             y=totals.values,
             labels={'x': 'Company', 'y': 'Ads'},
-            color_discrete_sequence=['#2FB375']
+            color_discrete_sequence=[PRIMARY_ACCENT_COLOR]
         )
         fig_total.update_layout(
             height=450,
@@ -415,7 +421,7 @@ def render():
                         if ad_id:
                             escaped_ad_id = html.escape(str(ad_id))
                             ad_url = f"https://www.facebook.com/ads/library/?id={escaped_ad_id}"
-                            example_html = f'<a href="{ad_url}" target="_blank" style="color:#2FB375; text-decoration:none;">"{escaped_text}"</a>'
+                            example_html = f'<a href="{ad_url}" target="_blank" style="color:{PRIMARY_ACCENT_COLOR}; text-decoration:none;">"{escaped_text}"</a>'
                         else:
                             example_html = f'"{escaped_text}"'
                         
@@ -435,10 +441,10 @@ def render():
                     f'background-color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.06);">\n'
                     f'    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">\n'
                     f'        <div>\n'
-                    f'            <h5 style="margin:0; color:#333; font-weight:600;">{theme_name}</h5>\n'
+                    f'            <h5 style="margin:0; color:{PRIMARY_ACCENT_COLOR}; font-weight:600;">{theme_name}</h5>\n'
                     f'        </div>\n'
                     f'        <div style="text-align:right;">\n'
-                    f'            <p style="margin:0; font-size:1.8em; color:#2FB375; font-weight:700;">{percentage:.1f}%</p>\n'
+                    f'            <p style="margin:0; font-size:1.8em; color:{POSITIVE_HIGHLIGHT_COLOR}; font-weight:700;">{percentage:.1f}%</p>\n'
                     f'            <p style="margin:4px 0 0; color:#666; font-size:0.9em;">{count} ads</p>\n'
                     f'        </div>\n'
                     f'    </div>\n'
